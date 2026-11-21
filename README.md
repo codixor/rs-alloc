@@ -60,8 +60,11 @@ This selects gperftools TCMalloc on GNU/Linux x86_64 and AArch64. Install
 the gperftools development package on the build host and the shared library
 on the deployment host. TCMalloc requires 64-bit pointers for this policy.
 Linux ARM32 selects mimalloc both by default and with `--no-default-features --features auto`.
-Version 0.1.0 used jemalloc on ARM32. Its small-batch benchmark took 42.85 µs versus
-21.46 µs with upstream mimalloc on the same ARMv7 runner. [ARM32 measurements](https://github.com/codixor/rs-alloc/actions/runs/44899234883)
+Version 0.1.0 used jemalloc on ARM32. Across 21 benchmarks, the mimalloc default
+scored 1.283× the released jemalloc default and 1.117× upstream mimalloc. All three
+ARMv7 binaries ran in six balanced rounds in AArch32 mode on the same ARM64 runner.
+[ARM32 benchmark and raw samples](https://github.com/codixor/rs-alloc/actions/runs/44912350024)
+
 Windows and macOS (x86_64/AArch64), x86_64 Android
 and the ARM64 iOS simulator use mimalloc. Physical ARM Android and iOS keep
 the system allocator. Windows measurements used MSVC; the same backend choice
@@ -99,7 +102,8 @@ including those that use `mlockall`, set `default-features = false, features = [
 The mobile and desktop backends ship in the same `rs-auto-alloc` crate. Features
 that share a native dependency can compile it even when another allocator is
 selected. For example, an ARM32 Linux default build also compiles jemalloc,
-and a Windows or Android default build compiles mimalloc while selecting `System`.
+and Windows, Android and iOS default builds compile mimalloc while selecting `System`.
+These builds require a C compiler for the target.
 For a hosted system-only build without native allocator dependencies, set
 `default-features = false` and enable no allocator features.
 

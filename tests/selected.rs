@@ -43,6 +43,8 @@ fn growth_shrink_zeroed_and_aligned_allocations_are_correct() {
 /// `tests/glibc_control.rs`).
 #[cfg(all(
     feature = "jemalloc",
+    not(feature = "linux-mimalloc"),
+    not(all(feature = "tcmalloc", target_env = "gnu")),
     target_os = "linux",
     any(target_arch = "x86_64", target_arch = "aarch64")
 ))]
@@ -53,6 +55,8 @@ fn large_block_offset() -> usize {
 
 #[cfg(all(
     feature = "jemalloc",
+    not(feature = "linux-mimalloc"),
+    not(all(feature = "tcmalloc", target_env = "gnu")),
     target_os = "linux",
     any(target_arch = "x86_64", target_arch = "aarch64")
 ))]
@@ -67,4 +71,34 @@ fn jemalloc_serves_the_programs_allocations() {
             "a large block at page offset {offset}, not on a cache line: not jemalloc"
         );
     }
+}
+
+/// Preserve the original feature contract for callers using the desktop defaults.
+#[cfg(not(any(
+    feature = "tcmalloc",
+    feature = "linux-mimalloc",
+    feature = "macos-jemalloc"
+)))]
+#[test]
+fn hosted_feature_selection() {
+    let expected = if cfg!(all(
+        feature = "jemalloc",
+        target_os = "linux",
+        any(target_arch = "x86_64", target_arch = "aarch64")
+    )) {
+        "jemalloc"
+    } else if cfg!(all(
+        feature = "mimalloc",
+        any(
+            target_os = "macos",
+            target_os = "windows",
+            target_os = "android",
+            target_os = "ios"
+        )
+    )) {
+        "mimalloc"
+    } else {
+        "system"
+    };
+    assert_eq!(rs_alloc::NAME, expected);
 }

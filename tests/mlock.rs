@@ -20,6 +20,10 @@ fn status_kb(key: &str) -> u64 {
 
 #[test]
 fn locked_memory_stays_bounded() {
+    // Only the system and jemalloc policies target memory-locked services.
+    if !matches!(rs_alloc::NAME, "jemalloc" | "system") {
+        return;
+    }
     if let Err(e) = mlockall(MlockAllFlags::CURRENT | MlockAllFlags::FUTURE) {
         assert!(
             std::env::var_os("RS_ALLOC_REQUIRE_MLOCK").is_none(),

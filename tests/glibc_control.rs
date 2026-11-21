@@ -3,7 +3,12 @@
 //! its own process: once glibc has freed an `mmap`ed block it raises its
 //! `mmap` threshold, and a later large block comes from the heap instead.
 
-#![cfg(all(not(feature = "jemalloc"), target_os = "linux", target_env = "gnu"))]
+#![cfg(all(
+    not(any(feature = "jemalloc", feature = "linux-mimalloc", feature = "tcmalloc")),
+    target_os = "linux",
+    target_env = "gnu",
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))]
 
 rs_alloc::install!();
 

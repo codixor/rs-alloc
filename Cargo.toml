@@ -3,30 +3,48 @@ name = "rs-alloc"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
-description = "The program's global allocator, chosen per target at compile time: jemalloc on Linux, opt-in mimalloc on macOS and Windows, the system allocator elsewhere"
+description = "Compile-time global allocator selection for hosted Rust programs and bare-metal firmware"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/codixor/rs-alloc"
-keywords = ["allocator", "jemalloc", "mimalloc", "global-allocator"]
+keywords = ["allocator", "jemalloc", "mimalloc", "tcmalloc", "embedded"]
 categories = ["memory-management"]
-
-# Linux on x86_64 and arm64 (glibc or musl): jemalloc. Its C code is built by
-# tikv-jemalloc-sys (configure + make), so the build host needs `make`.
-[target.'cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
-tikv-jemallocator = { version = "0.7.0", optional = true }
-
-# macOS and Windows: mimalloc, only when a program opts in. Never on Linux:
-# under mlockall it locks a 1 GiB arena at start.
-[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
-mimalloc = { version = "0.1.52", default-features = false, optional = true }
 
 [features]
 default = ["jemalloc"]
 jemalloc = ["dep:tikv-jemallocator"]
+macos-jemalloc = ["dep:darwin-jemallocator"]
 mimalloc = ["dep:mimalloc"]
+# Separate opt-in for Linux processes that do not lock their address space.
+linux-mimalloc = ["dep:mimalloc"]
+tcmalloc = ["dep:tcmalloc"]
 
-# Locks memory as a hardened server does (tests/mlock.rs).
+[dependencies]
+cfg-if = "1"
+
+[target.'cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
+tikv-jemallocator = { version = "0.7.0", optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+darwin-jemallocator = { package = "tikv-jemallocator", version = "0.7.0", optional = true }
+
+[target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android", all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64"))))'.dependencies]
+mimalloc = { version = "0.1.52", default-features = false, optional = true }
+
+[target.'cfg(all(any(all(target_os = "linux", target_env = "gnu"), target_os = "macos"), any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
+tcmalloc = { version = "0.3.0", optional = true }
+
+[target.'cfg(target_os = "none")'.dependencies]
+embedded-alloc = { version = "0.7.0", default-features = false, features = ["llff"] }
+
 [target.'cfg(target_os = "linux")'.dev-dependencies]
 rustix = { version = "1.1.6", features = ["mm", "process", "std"] }
 
 [lints.rust]
 unsafe_code = "forbid"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+panic = "unwind"

@@ -46,6 +46,11 @@ jobs:
         run: cargo test --no-default-features
       - name: mimalloc feature
         run: cargo test --features mimalloc
+      - name: Desktop automatic allocator and layout boundary tests
+        if: runner.os == 'Windows' || runner.os == 'macOS'
+        run: |
+          cargo test --locked --no-default-features --features auto
+          cargo test --locked -p rs-alloc-desktop
       # The runner's memory-lock limit is too small for mlockall: raise it for
       # this shell and require the test to lock (fail, not skip).
       - name: Bounded under mlockall

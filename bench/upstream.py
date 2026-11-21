@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -124,6 +125,9 @@ def main():
     parser.add_argument("--rounds", type=int, default=3)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if (len(set(args.features)) != len(args.features) or "upstream" in args.features
+            or any(not re.fullmatch(r"[A-Za-z0-9_-]+", f) for f in args.features)):
+        parser.error("provide distinct Cargo feature names or system; upstream is included automatically")
     if args.rounds < 1:
         parser.error("--rounds must be positive")
     if args.legacy_lock and not args.lockfile:
@@ -153,7 +157,8 @@ def main():
         report = dict(target=args.target, mode=args.mode, cpu=cpu_model(), upstream=REV,
                       upstream_default_features=args.mode == "native", rustc=output("rustc", "-vV"),
                       commit=output("git", "-C", str(candidate), "rev-parse", "HEAD"),
-                      balanced_order=args.balanced_order, resolved_features=None if legacy_lock else args.features,
+                      requested_rounds=args.rounds, balanced_order=args.balanced_order,
+                      resolved_features=None if legacy_lock else args.features,
                       lock_sha256=hashlib.sha256(lock.read_bytes()).hexdigest(), rounds=[])
         binaries = {name: build(work, args.target, name, legacy_lock) for name in backends}
         if hashlib.sha256(lock.read_bytes()).hexdigest() != report["lock_sha256"]:

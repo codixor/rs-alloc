@@ -1,3 +1,9 @@
+[workspace]
+members = ["desktop"]
+default-members = ["."]
+exclude = ["backends", "mobile"]
+resolver = "3"
+
 [package]
 name = "rs-alloc"
 version = "0.1.0"

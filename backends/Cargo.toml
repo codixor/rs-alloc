@@ -1,0 +1,20 @@
+# Isolate the native builds behind the new opt-ins. Existing macOS defaults
+# and the existing Linux "mimalloc" feature must not compile an unused C library.
+[package]
+name = "rs-alloc-alternatives"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+description = "Target-specific optional allocator dependencies for rs-alloc"
+repository = "https://github.com/codixor/rs-alloc"
+
+[features]
+macos-jemalloc = ["dep:tikv-jemallocator"]
+linux-mimalloc = ["dep:mimalloc"]
+
+[target.'cfg(target_os = "macos")'.dependencies]
+tikv-jemallocator = { version = "0.7.0", optional = true }
+
+[target.'cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
+mimalloc = { version = "0.1.52", default-features = false, optional = true }

@@ -12,22 +12,20 @@ categories = ["memory-management"]
 [features]
 default = ["jemalloc"]
 jemalloc = ["dep:tikv-jemallocator"]
-macos-jemalloc = ["dep:darwin-jemallocator"]
+macos-jemalloc = ["alternative-backends/macos-jemalloc"]
 mimalloc = ["dep:mimalloc"]
 # Separate opt-in for Linux processes that do not lock their address space.
-linux-mimalloc = ["dep:mimalloc"]
+linux-mimalloc = ["alternative-backends/linux-mimalloc"]
 tcmalloc = ["dep:tcmalloc"]
 
 [dependencies]
 cfg-if = "1"
+alternative-backends = { package = "rs-alloc-alternatives", path = "backends", version = "0.1.0", optional = true }
 
 [target.'cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
 tikv-jemallocator = { version = "0.7.0", optional = true }
 
-[target.'cfg(target_os = "macos")'.dependencies]
-darwin-jemallocator = { package = "tikv-jemallocator", version = "0.7.0", optional = true }
-
-[target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android", all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64"))))'.dependencies]
+[target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))'.dependencies]
 mimalloc = { version = "0.1.52", default-features = false, optional = true }
 
 [target.'cfg(all(any(all(target_os = "linux", target_env = "gnu"), target_os = "macos"), any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]

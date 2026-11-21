@@ -79,7 +79,7 @@ rs_alloc::install!(HEAP);
 
 // At early board startup, before interrupts or tasks can allocate:
 // SAFETY: this is the only initialization and the macro owns the static storage.
-unsafe { rs_alloc::init_heap!(HEAP, 1024) };
+unsafe { rs_alloc::init_heap!(HEAP, 1024); }
 ```
 
 ## Choosing for a workload

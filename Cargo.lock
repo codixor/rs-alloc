@@ -99,8 +99,17 @@ dependencies = [
  "cfg-if",
  "embedded-alloc",
  "mimalloc",
+ "rs-alloc-alternatives",
  "rustix",
  "tcmalloc",
+ "tikv-jemallocator",
+]
+
+[[package]]
+name = "rs-alloc-alternatives"
+version = "0.1.0"
+dependencies = [
+ "mimalloc",
  "tikv-jemallocator",
 ]
 

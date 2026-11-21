@@ -34,11 +34,11 @@ cfg_if::cfg_if! {
     } else if #[cfg(all(feature = "tcmalloc", any(target_arch = "x86_64", target_arch = "aarch64"), any(all(target_os = "linux", target_env = "gnu"), target_os = "macos")))] {
         hosted_allocator!(tcmalloc::TCMalloc, "tcmalloc");
     } else if #[cfg(all(feature = "linux-mimalloc", target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))] {
-        hosted_allocator!(mimalloc::MiMalloc, "mimalloc");
+        hosted_allocator!(alternative_backends::MiMalloc, "mimalloc");
     } else if #[cfg(all(feature = "jemalloc", target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))] {
         hosted_allocator!(tikv_jemallocator::Jemalloc, "jemalloc");
     } else if #[cfg(all(feature = "macos-jemalloc", target_os = "macos"))] {
-        hosted_allocator!(darwin_jemallocator::Jemalloc, "jemalloc");
+        hosted_allocator!(alternative_backends::Jemalloc, "jemalloc");
     } else if #[cfg(all(feature = "mimalloc", any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))] {
         hosted_allocator!(mimalloc::MiMalloc, "mimalloc");
     } else {

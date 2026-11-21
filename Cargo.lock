@@ -101,7 +101,7 @@ dependencies = [
 
 [[package]]
 name = "rs-auto-alloc"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "cfg-if",
  "embedded-alloc",

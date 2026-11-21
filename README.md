@@ -154,8 +154,12 @@ request p99 requires an application-level test.
    host, in debug and release, so tests run what ships, and no block is ever
    freed by a different allocator than the one that made it.
 2. **Only a binary installs it**, through `install!()`.
-3. Use each backend's own `GlobalAlloc` implementation. The gperftools Rust
-   adapter inherits the trait defaults for resizing and zeroed allocations.
+3. The desktop `auto` adapter uses mimalloc's ordinary, small, and aligned
+   entry points according to Rust's requested layout. On macOS and Windows
+   ARM64 it clears the requested extent for ordinary allocations up to
+   64 KiB. Windows x64 uses mimalloc's native zeroing. Explicit `mimalloc`
+   uses the stock Rust adapter. The gperftools adapter inherits the Rust
+   trait defaults for resizing and zeroed allocations.
 4. **Silent**: it prints nothing; log `rs_alloc::NAME` if you want.
 5. **Memory-locked Linux services use the default.** With overcommit, mimalloc commits a 1 GiB
    arena at the first allocation, and a process that calls `mlockall` locks
@@ -164,7 +168,9 @@ request p99 requires an application-level test.
    `madvise` on locked pages, so jemalloc's default keeps every page it ever
    used; `retain:false` makes it unmap them instead (measured: a freed
    200 MiB block stayed locked without it, and was released with it).
-7. **No `unsafe`** in this crate (`#![forbid(unsafe_code)]`).
+7. The selector forbids unsafe code. The desktop adapter isolates its
+   native calls in [desktop/src/lib.rs](desktop/src/lib.rs). Its boundary
+   tests cover zeroing, alignment, growth and shrinking.
 
 ## Tests
 

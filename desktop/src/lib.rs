@@ -39,6 +39,23 @@ unsafe impl GlobalAlloc for DesktopMiMalloc {
 
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        // On modest, naturally aligned requests LLVM can clear precisely the
+        // Rust layout. Keep mimalloc's page-aware zeroing for larger blocks.
+        const CLEAR_REQUESTED_BYTES: bool = cfg!(any(
+            target_os = "macos",
+            all(target_os = "windows", target_arch = "aarch64")
+        ));
+        if CLEAR_REQUESTED_BYTES
+            && ordinary(layout.size(), layout.align())
+            && layout.size() <= 64 * 1024
+        {
+            // SAFETY: alloc returns null or a live, writable block of layout.size() bytes.
+            let block = unsafe { self.alloc(layout) };
+            if !block.is_null() {
+                unsafe { block.write_bytes(0, layout.size()) };
+            }
+            return block;
+        }
         // SAFETY: As in alloc, each branch respects the alignment and the
         // small API's size bound. Each native entry point zeroes the block.
         unsafe {

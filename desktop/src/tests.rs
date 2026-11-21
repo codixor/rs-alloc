@@ -5,7 +5,19 @@ use core::{ptr, slice};
 fn zeroing_and_resize_preserve_layout_at_native_boundaries() {
     let limit = mi::MI_SMALL_SIZE_MAX;
     for align in [1, 2, 8, 16, 64, 4096, 65536] {
-        for size in [1, 7, 8, 17, limit - 1, limit, limit + 1, 8193] {
+        for size in [
+            1,
+            7,
+            8,
+            17,
+            limit - 1,
+            limit,
+            limit + 1,
+            8193,
+            65535,
+            65536,
+            65537,
+        ] {
             let layout = Layout::from_size_align(size, align).unwrap();
             let grown_size = size + limit;
             let grown_layout = Layout::from_size_align(grown_size, align).unwrap();

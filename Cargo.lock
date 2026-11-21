@@ -100,6 +100,7 @@ dependencies = [
  "embedded-alloc",
  "mimalloc",
  "rs-alloc-alternatives",
+ "rs-alloc-mobile",
  "rustix",
  "tcmalloc",
  "tikv-jemallocator",
@@ -111,6 +112,13 @@ version = "0.1.0"
 dependencies = [
  "mimalloc",
  "tikv-jemallocator",
+]
+
+[[package]]
+name = "rs-alloc-mobile"
+version = "0.1.0"
+dependencies = [
+ "mimalloc",
 ]
 
 [[package]]

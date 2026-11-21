@@ -15,7 +15,7 @@ The opt-in `auto` policy beat upstream by more than 5% on both Linux runners and
 
 ## What was measured
 
-Each machine ran the 21 Criterion cases in upstream revision `28aea006` with one executable per allocator. The adapter changed allocator installation and startup diagnostics. Both executables used the same timed code, compiler, target, dependency resolution and release settings. Desktop upstream reported mimalloc. Mobile upstream reported System with its desktop-only optional features disabled. Each case used 20 samples after a 150 ms warm-up and a 350 ms measurement target. A fresh process ran each suite, with backend order rotated across three rounds. [Upstream suite](https://github.com/YeautyYE/auto-allocator/blob/28aea006da844756a19c91746dd994d7d765a3de/benches/allocator_benchmark.rs)
+Each machine ran the 21 Criterion cases in upstream revision `28aea006` with one executable per allocator. The adapter changed allocator installation and startup diagnostics. Both executables used the same timed code, compiler, target, dependency resolution and release settings. The mobile candidate labeled `mimalloc` in the archived run is exposed as `mobile-mimalloc` in the final API. Desktop upstream reported mimalloc. Mobile upstream reported System with its desktop-only optional features disabled. The archive retains the per-round median estimates for the campaign. Individual Criterion sample timings and confidence intervals were discarded by that harness. New runs save them beside the report in a `.samples.zip` file. Each case used 20 samples after a 150 ms warm-up and a 350 ms measurement target. A fresh process ran each suite, with backend order rotated across three rounds. [Upstream suite](https://github.com/YeautyYE/auto-allocator/blob/28aea006da844756a19c91746dd994d7d765a3de/benches/allocator_benchmark.rs)
 
 For each case, speedup is upstream median time divided by candidate median time. The first two rounds selected one backend per target by the geometric mean across all cases. The table uses only the third round for scoring. A win exceeds 1.05×, a loss is below 1/1.05× and the middle band is descriptive. Results come from one hosted machine per target. The twelve basic allocation sizes and operations have twelve votes in the 21-case mean. The concurrency tests include creating and joining threads. The fragmentation case clears byte vectors while retaining their capacities.
 
@@ -28,6 +28,15 @@ The complementary survey measured single-producer churn, concurrent churn and cr
 ```sh
 python bench/upstream.py --target x86_64-unknown-linux-gnu --features system jemalloc linux-mimalloc tcmalloc --output target/comparison/linux/comparison.json
 python bench/summarize.py target/comparison --csv target/criterion.csv
+```
+
+To replay the archived dependency resolution, extract `raw.zip` and point the current driver at the original candidate checkout. Use the compiler recorded in the target's comparison JSON and the matching native library versions for a toolchain-matched run. For example, from the repository root on x86_64 Linux:
+
+```sh
+python -m zipfile -e bench/results/2026-11-21/raw.zip target/replay-input
+git worktree add --detach .worktrees/criterion-replay ebe2686a48400a31f8aa70379d6da55919486409
+python bench/upstream.py --candidate-dir .worktrees/criterion-replay --lockfile target/replay-input/upstream/native-x86_64-unknown-linux-gnu/comparison.lock --target x86_64-unknown-linux-gnu --features system jemalloc linux-mimalloc tcmalloc --output target/replayed/linux/comparison.json
+git worktree remove .worktrees/criterion-replay
 ```
 
 The upstream suite requires the Rust standard library, OS threads and a clock. Firmware validation compiled a downstream heap consumer with the ARM Cortex-M, AVR, MSP430, RISC-V 32/64 and Xtensa toolchains. The run also cross-checked ARM32 and RISC-V Linux, physical iOS ARM64 and Android ARM32/ARM64. Physical handset and board timings remain unmeasured. [Hosted benchmark and firmware checks](https://github.com/codixor/rs-alloc/actions/runs/44860123848) · [Complementary survey](https://github.com/codixor/rs-alloc/actions/runs/44859305682)

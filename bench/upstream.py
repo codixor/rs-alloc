@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import zipfile
 from pathlib import Path
 
 from run import cpu_model, device_directory, expected_backend, output
@@ -14,7 +15,7 @@ REV = "28aea006da844756a19c91746dd994d7d765a3de"
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def prepare(work, mobile):
+def prepare(work, mobile, candidate):
     upstream = work / "upstream"
     subprocess.run(["git", "init", "-q", str(upstream)], check=True)
     subprocess.run(["git", "-C", str(upstream), "fetch", "-q", "--depth=1",
@@ -42,7 +43,7 @@ edition = "2021"
 [dependencies]
 criterion = "=0.5.1"
 auto-allocator = {{ path = "upstream", optional = true, default-features = {defaults} }}
-rs-alloc = {{ path = {json.dumps(ROOT.as_posix())}, optional = true, default-features = false }}
+rs-alloc = {{ path = {json.dumps(candidate.as_posix())}, optional = true, default-features = false }}
 [features]
 upstream = ["dep:auto-allocator"]
 ours = ["dep:rs-alloc"]
@@ -67,7 +68,7 @@ def build(work, target, backend):
     return Path(shutil.copy2(exe, work / (backend + Path(exe).suffix)))
 
 
-def measure(mode, binary, directory, remote):
+def measure(mode, binary, directory, remote, archive):
     flags = ["--bench", "--noplot", "--sample-size", "20", "--nresamples", "1000",
              "--warm-up-time", "0.15", "--measurement-time", "0.35"]
     env = os.environ.copy()
@@ -93,6 +94,8 @@ def measure(mode, binary, directory, remote):
     for path in directory.glob("**/new/estimates.json"):
         name = json.loads(path.with_name("benchmark.json").read_text())["full_id"]
         cases[name] = json.loads(path.read_text())["median"]["point_estimate"]
+        for file in ("benchmark.json", "sample.json", "estimates.json"):
+            archive.write(path.with_name(file), directory.name + "/" + name + "/" + file)
     if len(cases) != 21:
         raise RuntimeError(f"Expected 21 upstream cases, found {len(cases)} in {directory}")
     return {"allocator": selected, "median_ns": cases}
@@ -101,6 +104,8 @@ def measure(mode, binary, directory, remote):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target", required=True)
+    parser.add_argument("--candidate-dir", type=Path, default=ROOT, help="rs-alloc checkout to benchmark")
+    parser.add_argument("--lockfile", type=Path, help="replay an existing comparison.lock exactly")
     parser.add_argument("--features", nargs="+", required=True)
     parser.add_argument("--mode", choices=["native", "android-emulator", "ios-simulator"], default="native")
     parser.add_argument("--rounds", type=int, default=3)
@@ -108,32 +113,38 @@ def main():
     args = parser.parse_args()
     if args.rounds < 1:
         parser.error("--rounds must be positive")
+    candidate = args.candidate_dir.resolve(strict=True)
     backends = ["upstream", *args.features]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     scratch = ROOT / "target"
     scratch.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(dir=scratch, prefix="criterion-") as tmp, device_directory(args.mode) as remote:
         work = Path(tmp)
-        prepare(work, args.mode != "native")
-        subprocess.run(["cargo", "generate-lockfile", "--manifest-path", str(work / "Cargo.toml")], check=True)
+        prepare(work, args.mode != "native", candidate)
         lock = work / "Cargo.lock"
-        shutil.copy2(lock, args.output.with_suffix(".lock"))
+        if args.lockfile:
+            shutil.copyfile(args.lockfile, lock)
+        else:
+            subprocess.run(["cargo", "generate-lockfile", "--manifest-path", str(work / "Cargo.toml")], check=True)
+        if args.lockfile is None or args.lockfile.resolve() != args.output.with_suffix(".lock").resolve():
+            shutil.copy2(lock, args.output.with_suffix(".lock"))
         report = dict(target=args.target, mode=args.mode, cpu=cpu_model(), upstream=REV,
                       upstream_default_features=args.mode == "native", rustc=output("rustc", "-vV"),
-                      commit=output("git", "rev-parse", "HEAD"),
+                      commit=output("git", "-C", str(candidate), "rev-parse", "HEAD"),
                       lock_sha256=hashlib.sha256(lock.read_bytes()).hexdigest(), rounds=[])
         binaries = {name: build(work, args.target, name) for name in backends}
-        for index in range(args.rounds):
-            measurements = {}
-            for name in backends[index % len(backends):] + backends[:index % len(backends)]:
-                print(f"Round {index+1}: {name}", flush=True)
-                measurement = measure(args.mode, binaries[name], work / f"round-{index+1}-{name}", remote)
-                expected = expected_backend(name, args.target)
-                if name != "upstream" and measurement["allocator"] != expected:
-                    raise RuntimeError(f"Requested {expected}, measured {measurement['allocator']}")
-                measurements[name] = measurement
-            report["rounds"].append(measurements)
-            args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        with zipfile.ZipFile(args.output.with_suffix(".samples.zip"), "w", zipfile.ZIP_DEFLATED) as archive:
+            for index in range(args.rounds):
+                measurements = {}
+                for name in backends[index % len(backends):] + backends[:index % len(backends)]:
+                    print(f"Round {index+1}: {name}", flush=True)
+                    measurement = measure(args.mode, binaries[name], work / f"round-{index+1}-{name}", remote, archive)
+                    expected = expected_backend(name, args.target)
+                    if name != "upstream" and measurement["allocator"] != expected:
+                        raise RuntimeError(f"Requested {expected}, measured {measurement['allocator']}")
+                    measurements[name] = measurement
+                report["rounds"].append(measurements)
+                args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

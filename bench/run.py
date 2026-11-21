@@ -1,6 +1,7 @@
 """Build each backend once, rotate execution order on one runner and save raw samples."""
 import argparse
 from contextlib import contextmanager
+from functools import lru_cache
 import json
 import os
 import platform
@@ -30,18 +31,30 @@ def device_directory(mode):
         output("adb", "shell", "rm", "-rf", path)
 
 
+@lru_cache(maxsize=None)
+def target_cfg(target):
+    cfg = {}
+    for line in output("rustc", "--print", "cfg", "--target", target).splitlines():
+        if line.startswith("target_") and "=" in line:
+            key, value = line.split("=", 1)
+            cfg[key] = json.loads(value)
+    return cfg
+
+
 def expected_backend(feature, target):
     if feature == "auto":
-        if target in {"x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"}:
+        cfg = target_cfg(target)
+        os_name, arch = cfg["target_os"], cfg["target_arch"]
+        desktop64 = arch in {"x86_64", "aarch64"}
+        if os_name == "linux" and cfg["target_env"] == "gnu" and cfg["target_pointer_width"] == "64" and desktop64:
             return "tcmalloc"
-        if target in {"x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc",
-                      "x86_64-apple-darwin", "aarch64-apple-darwin",
-                      "aarch64-apple-ios-sim", "x86_64-linux-android"}:
+        if os_name in {"windows", "macos"} and desktop64:
             return "mimalloc"
-        if target.startswith(("x86_64-", "aarch64-")) and "-windows-" in target:
+        if (os_name, arch) == ("android", "x86_64") or (os_name, arch, cfg.get("target_abi")) == ("ios", "aarch64", "sim"):
             return "mimalloc"
         return "system"
-    return {"macos-jemalloc": "jemalloc", "linux-mimalloc": "mimalloc"}.get(feature, feature)
+    return {"macos-jemalloc": "jemalloc", "linux-mimalloc": "mimalloc",
+            "mobile-mimalloc": "mimalloc"}.get(feature, feature)
 
 
 def build(target, feature, dest):
@@ -102,7 +115,7 @@ def run():
                     row = json.loads(output(*commands[i], workload))
                     if row["allocator"] != expected or row["workload"] != workload:
                         raise RuntimeError(f"Unexpected measurement: {row}")
-                    if row["arch"] != args.target.split("-")[0]:
+                    if (row["arch"], row["os"]) != (target_cfg(args.target)["target_arch"], target_cfg(args.target)["target_os"]):
                         raise RuntimeError(f"Unexpected architecture: {row}")
                     rows.append(dict(round=iteration + 1, **row))
     report = dict(target=args.target, mode=args.mode, host_cpu=cpu_model(),

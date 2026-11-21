@@ -14,7 +14,7 @@ rs_alloc::install!();
 | Linux ARM32 and RISC-V, other hosted architectures | system | system |
 | Windows x86_64 / ARM64 | system | `mimalloc` |
 | macOS Intel / Apple Silicon | system | `mimalloc`, `macos-jemalloc`, `tcmalloc` |
-| Android ARM32 / ARM64 / x86_64 and iOS ARM64 (including the simulator) | system | `mimalloc` |
+| Android ARM32 / ARM64 / x86_64 and iOS ARM64 (including the simulator) | system | `mobile-mimalloc` |
 | Bare metal (`target_os = "none"`), including AVR, MSP430, RISC-V 32/64, Xtensa and ARM | embedded linked-list first-fit heap | board chooses heap size |
 | WebAssembly with Rust's hosted standard library and other hosted targets | system | system |
 
@@ -57,9 +57,11 @@ kernel. 64 KiB pages also run on 4 and 16 KiB kernels.
 For an unlocked application, enable `auto` and call the same `rs_alloc::install!()`.
 This selects gperftools TCMalloc on GNU/Linux x86_64 and AArch64. Install
 the gperftools development package on the build host and the shared library
-on the deployment host. Windows and macOS (x86_64/AArch64), x86_64 Android
+on the deployment host. The Linux auto choice requires 64-bit pointers.
+Windows and macOS (x86_64/AArch64), x86_64 Android
 and the ARM64 iOS simulator use mimalloc. Physical ARM Android and iOS keep
-the system allocator. Firmware still uses the board heap.
+the system allocator. Windows measurements used MSVC; the same backend choice
+extends to Windows GNU on those architectures. Firmware still uses the board heap.
 
 ```toml
 rs-alloc = { path = "../rs-alloc", default-features = false, features = ["auto"] }
@@ -81,9 +83,10 @@ nonstandard prefix. This is the gperftools implementation.
 
 Cargo features unify across the dependency graph. On a supported target, the
 first applicable policy wins in this order: explicit TCMalloc, Linux mimalloc,
-macOS jemalloc, hosted mimalloc, measured `auto`, then Linux jemalloc. The fallback
+macOS jemalloc, desktop or mobile mimalloc, measured `auto`, then Linux jemalloc. The fallback
 is the system.
-The existing `mimalloc` flag keeps its original behavior on Linux. Use
+The existing `mimalloc` flag applies only to Windows and macOS.
+Use `mobile-mimalloc` to replace an Android or iOS system allocator explicitly. Use
 `linux-mimalloc` only for processes that can tolerate its virtual memory
 reservation. Keep the defaults for Linux services that use `mlockall`.
 

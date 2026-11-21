@@ -47,20 +47,25 @@ cfg_if::cfg_if! {
         hosted_allocator!(alternative_backends::Jemalloc, "jemalloc");
     } else if #[cfg(all(
         feature = "mimalloc",
-        any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")
+        any(target_os = "macos", target_os = "windows")
     ))] {
         hosted_allocator!(mimalloc::MiMalloc, "mimalloc");
+    } else if #[cfg(any(
+        all(feature = "mobile-mimalloc", any(target_os = "ios", target_os = "android")),
+        all(feature = "auto", target_os = "android", target_arch = "x86_64"),
+        all(feature = "auto", target_os = "ios", target_arch = "aarch64", target_abi = "sim")
+    ))] {
+        hosted_allocator!(rs_alloc_mobile::MiMalloc, "mimalloc");
     } else if #[cfg(all(
-        feature = "auto", target_os = "linux", target_env = "gnu",
+        feature = "auto", target_os = "linux", target_env = "gnu", target_pointer_width = "64",
         any(target_arch = "x86_64", target_arch = "aarch64")
     ))] {
         hosted_allocator!(tcmalloc::TCMalloc, "tcmalloc");
-    } else if #[cfg(all(feature = "auto", any(
-        all(any(target_os = "windows", target_os = "macos"), any(target_arch = "x86_64", target_arch = "aarch64")),
-        all(target_os = "android", target_arch = "x86_64"),
-        all(target_os = "ios", target_arch = "aarch64", target_abi = "sim")
-    )))] {
-        hosted_allocator!(alternative_backends::MiMalloc, "mimalloc");
+    } else if #[cfg(all(
+        feature = "auto", any(target_os = "macos", target_os = "windows"),
+        any(target_arch = "x86_64", target_arch = "aarch64")
+    ))] {
+        hosted_allocator!(mimalloc::MiMalloc, "mimalloc");
     } else if #[cfg(all(
         feature = "jemalloc", target_os = "linux",
         any(target_arch = "x86_64", target_arch = "aarch64")

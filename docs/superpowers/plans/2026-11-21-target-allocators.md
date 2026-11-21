@@ -21,19 +21,19 @@
 
 - [x] Extend `Cargo.toml` and `src/lib.rs` for gperftools TCMalloc, explicit Linux mimalloc, macOS jemalloc, mobile mimalloc and bare-metal LLFF.
 - [x] Isolate new native dependency opt-ins in `backends/`. Verify `cargo metadata --locked --all-features --format-version 1` and the original default selection contract.
-- [ ] Run the installed-allocator alignment, realloc, zeroing and Linux memory-lock regressions. Compile board consumers for ARM, RISC-V 32/64, Xtensa, MSP430 and AVR.
+- [x] Run the installed-allocator alignment, realloc, zeroing and Linux memory-lock regressions. Compile board consumers for ARM, RISC-V 32/64, Xtensa, MSP430 and AVR.
 
 ## 2. Independent upstream comparison
 
 - [x] Build the isolated three-workload survey in `examples/allocator_bench.rs` and `bench/run.py`.
 - [x] In `bench/upstream.py`, pin the upstream revision, gate the untimed diagnostic and global allocator binding, and preserve all timed benchmark bodies. Share a dependency lock, release profile and Rust target within each job.
-- [ ] Run all 21 Criterion cases over three rotated rounds with the baseline and every supported candidate. Save raw data, actual backend name, toolchain, commit and lockfile.
-- [ ] Compare one fixed backend per target on the same set of cases, reporting a geometric mean of paired speedups and the individual regressions. Use an opt-in performance policy only where target evidence supports it. Keep physical-device coverage explicit.
+- [x] Run all 21 Criterion cases over three rotated rounds with the baseline and every supported candidate. Save raw data, actual backend name, toolchain, commit and lockfile.
+- [x] Compare one fixed backend per target on the same set of cases, reporting a geometric mean of paired speedups and the individual regressions. Use an opt-in performance policy only where target evidence supports it. Keep physical-device coverage explicit.
 
 ## 3. ECC audit and handoff
 
-- [ ] Install the native Codex ECC plugin with mise-managed npx. Verify the installed source and distinguish agent-configuration checks from Rust checks.
-- [ ] Review selection, feature unification, firmware initialization, FFI ownership, license/advisory policy, benchmark validity and repository CI. Record audit evidence and any unverified scope.
-- [ ] Save the comparison results in the repository and locally, verify their case counts, remove the temporary CI ref, and verify the feature checkout. Write the required dated NAS update.
+- [x] Install the native Codex ECC plugin with mise-managed npx. Verify the installed source and distinguish agent-configuration checks from Rust checks.
+- [x] Review selection, feature unification, firmware initialization, FFI ownership, license/advisory policy, benchmark validity and repository CI. Record audit evidence and any unverified scope.
+- [x] Save the comparison results in the repository and locally, verify their case counts, remove the temporary CI ref, and verify the feature checkout. Write the required dated NAS update.
 
 The benchmark acceptance criterion is measured superiority on each covered target. An individual case or platform below parity remains a reported gap.

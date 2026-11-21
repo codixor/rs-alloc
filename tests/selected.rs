@@ -76,6 +76,7 @@ fn jemalloc_serves_the_programs_allocations() {
 /// Preserve the original feature contract for callers using the desktop defaults.
 #[cfg(not(any(
     feature = "auto",
+    feature = "mobile-mimalloc",
     feature = "tcmalloc",
     feature = "linux-mimalloc",
     feature = "macos-jemalloc"
@@ -90,12 +91,7 @@ fn hosted_feature_selection() {
         "jemalloc"
     } else if cfg!(all(
         feature = "mimalloc",
-        any(
-            target_os = "macos",
-            target_os = "windows",
-            target_os = "android",
-            target_os = "ios"
-        )
+        any(target_os = "macos", target_os = "windows")
     )) {
         "mimalloc"
     } else {
@@ -108,6 +104,7 @@ fn hosted_feature_selection() {
     feature = "auto",
     not(any(
         feature = "tcmalloc",
+        feature = "mobile-mimalloc",
         feature = "mimalloc",
         feature = "macos-jemalloc",
         feature = "linux-mimalloc"
@@ -116,11 +113,24 @@ fn hosted_feature_selection() {
 #[test]
 fn auto_profile_selects_the_measured_backend() {
     let expected = match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("linux", "x86_64" | "aarch64") if cfg!(target_env = "gnu") => "tcmalloc",
+        ("linux", "x86_64" | "aarch64")
+            if cfg!(all(target_env = "gnu", target_pointer_width = "64")) =>
+        {
+            "tcmalloc"
+        }
         ("macos" | "windows", "x86_64" | "aarch64") | ("android", "x86_64") => "mimalloc",
         ("ios", "aarch64") if cfg!(target_abi = "sim") => "mimalloc",
         ("linux", "x86_64" | "aarch64") if cfg!(feature = "jemalloc") => "jemalloc",
         _ => "system",
     };
     assert_eq!(rs_alloc::NAME, expected);
+}
+
+#[cfg(all(
+    feature = "mobile-mimalloc",
+    any(target_os = "android", target_os = "ios")
+))]
+#[test]
+fn mobile_replacement_is_explicit() {
+    assert_eq!(rs_alloc::NAME, "mimalloc");
 }

@@ -102,6 +102,9 @@ and `auto` on a physical ARM phone builds mimalloc and uses `System`.
 For a hosted system-only build without native allocator dependencies, set
 `default-features = false` and enable no allocator features.
 
+When building mimalloc for iOS, set `IPHONEOS_DEPLOYMENT_TARGET` to your app’s
+minimum iOS version so the Rust linker and native C build target the same OS.
+
 ## Firmware
 
 The firmware entry point installs a named heap and initializes it once before

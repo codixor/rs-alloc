@@ -1,7 +1,7 @@
 [workspace]
 members = ["desktop"]
 default-members = ["."]
-exclude = ["backends", "mobile"]
+exclude = ["backends", "mobile", "target"]
 resolver = "3"
 
 [package]

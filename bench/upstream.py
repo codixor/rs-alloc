@@ -43,7 +43,10 @@ def prepare(work, mobile, candidate, features):
     # optional transitive dependencies out of the archived resolution.
     feature_edges = "\n".join(f'case-{name} = ["ours", "rs-alloc/{name}"]'
                               for name in features if name != "system")
-    manifest = f'''[package]
+    manifest = f'''[workspace]
+exclude = ["upstream"]
+
+[package]
 name = "allocator-comparison"
 version = "0.0.0"
 edition = "2021"

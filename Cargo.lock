@@ -100,7 +100,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rs-alloc"
+name = "rs-auto-alloc"
 version = "0.1.0"
 dependencies = [
  "cfg-if",

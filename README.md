@@ -1,4 +1,4 @@
-# rs-alloc
+# rs-auto-alloc
 
 The global memory allocator for a Rust program, chosen per target **at
 compile time**. You add one line to your binary:
@@ -27,7 +27,7 @@ process and ARM firmware require different backends. AMD and Intel share Rust's
 
 ```toml
 [dependencies]
-rs-alloc = { git = "https://github.com/codixor/rs-alloc", rev = "<commit>" }
+rs-auto-alloc = "0.1.0"
 ```
 
 ```rust
@@ -67,7 +67,7 @@ the system allocator. Windows measurements used MSVC; the same backend choice
 extends to Windows GNU on those architectures. Firmware still uses the board heap.
 
 ```toml
-rs-alloc = { path = "../rs-alloc", default-features = false, features = ["auto"] }
+rs-auto-alloc = { version = "0.1.0", default-features = false, features = ["auto"] }
 ```
 
 The desktop follow-up measured `auto` faster than upstream on Apple Silicon,
@@ -95,7 +95,7 @@ Use `mobile-mimalloc` to replace an Android or iOS system allocator explicitly. 
 `linux-mimalloc` only for processes that can tolerate its virtual memory
 reservation. Keep the defaults for Linux services that use `mlockall`.
 
-The mobile and desktop backends ship in the same `rs-alloc` crate. Features
+The mobile and desktop backends ship in the same `rs-auto-alloc` crate. Features
 that share a native dependency can compile it even when another allocator is
 selected. For example, the macOS default builds jemalloc and uses `System`,
 and `auto` on a physical ARM phone builds mimalloc and uses `System`.
@@ -160,7 +160,7 @@ request p99 requires an application-level test.
   than glibc when CPU-bound, with a quarter to a third lower p99.
 - **Skip it** for command-line tools and short jobs: there is nothing to
   gain, and it adds a C build.
-- **Never install it in a library.** Depending on `rs-alloc` changes nothing;
+- **Never install it in a library.** Depending on `rs-auto-alloc` changes nothing;
   only a call to `install!()` does, and that belongs in a binary.
 
 ## Rules it keeps

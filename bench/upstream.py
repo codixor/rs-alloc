@@ -41,6 +41,13 @@ def prepare(work, mobile, candidate, features):
     # Cargo resolves declared feature edges when generating the shared lock.
     # Merely passing dependency/feature on the build command line can leave
     # optional transitive dependencies out of the archived resolution.
+    # Archived candidates used the package name rs-alloc. Keep a stable import
+    # and feature alias when replaying their locks or measuring the release.
+    candidate_manifest = (candidate / "Cargo.toml").resolve()
+    metadata = json.loads(output("cargo", "metadata", "--no-deps", "--format-version", "1",
+                                 "--manifest-path", str(candidate_manifest)))
+    package = next(p["name"] for p in metadata["packages"]
+                   if Path(p["manifest_path"]).resolve() == candidate_manifest)
     feature_edges = "\n".join(f'case-{name} = ["ours", "rs-alloc/{name}"]'
                               for name in features if name != "system")
     manifest = f'''[workspace]
@@ -53,7 +60,7 @@ edition = "2021"
 [dependencies]
 criterion = "=0.5.1"
 auto-allocator = {{ path = "upstream", optional = true, default-features = {defaults} }}
-rs-alloc = {{ path = {json.dumps(candidate.as_posix())}, optional = true, default-features = false }}
+rs-alloc = {{ package = {json.dumps(package)}, path = {json.dumps(candidate.as_posix())}, optional = true, default-features = false }}
 [features]
 upstream = ["dep:auto-allocator"]
 ours = ["dep:rs-alloc"]

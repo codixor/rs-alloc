@@ -10,6 +10,7 @@ description = "Target-specific optional allocator dependencies for rs-alloc"
 repository = "https://github.com/codixor/rs-alloc"
 
 [features]
+auto = []
 macos-jemalloc = ["dep:tikv-jemallocator"]
 linux-mimalloc = ["dep:mimalloc"]
 
@@ -18,3 +19,8 @@ tikv-jemallocator = { version = "0.7.0", optional = true }
 
 [target.'cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
 mimalloc = { version = "0.1.52", default-features = false, optional = true }
+
+# These are the measured mimalloc ABIs for the opt-in profile. The physical
+# mobile fallback can be checked without compiling a native allocator.
+[target.'cfg(any(all(any(target_os = "windows", target_os = "macos"), any(target_arch = "x86_64", target_arch = "aarch64")), all(target_os = "android", target_arch = "x86_64"), all(target_os = "ios", target_arch = "aarch64", target_abi = "sim")))'.dependencies]
+mimalloc = { version = "0.1.52", default-features = false }

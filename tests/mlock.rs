@@ -22,6 +22,12 @@ fn status_kb(key: &str) -> u64 {
 fn locked_memory_stays_bounded() {
     // Only the system and jemalloc policies target memory-locked services.
     if !matches!(rs_alloc::NAME, "jemalloc" | "system") {
+        assert!(
+            std::env::var_os("RS_ALLOC_REQUIRE_MLOCK").is_none(),
+            "{} has no qualified memory-lock policy",
+            rs_alloc::NAME
+        );
+        eprintln!("skipped: {} is for unlocked workloads", rs_alloc::NAME);
         return;
     }
     if let Err(e) = mlockall(MlockAllFlags::CURRENT | MlockAllFlags::FUTURE) {

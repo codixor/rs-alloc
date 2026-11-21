@@ -4,7 +4,12 @@
 //! `mmap` threshold, and a later large block comes from the heap instead.
 
 #![cfg(all(
-    not(any(feature = "jemalloc", feature = "linux-mimalloc", feature = "tcmalloc")),
+    not(any(
+        feature = "auto",
+        feature = "jemalloc",
+        feature = "linux-mimalloc",
+        feature = "tcmalloc"
+    )),
     target_os = "linux",
     target_env = "gnu",
     any(target_arch = "x86_64", target_arch = "aarch64")

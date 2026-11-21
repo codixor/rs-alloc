@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from run import cpu_model, output
+from run import cpu_model, device_directory, expected_backend, output
 
 REV = "28aea006da844756a19c91746dd994d7d765a3de"
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,13 +67,11 @@ def build(work, target, backend):
     return Path(shutil.copy2(exe, work / (backend + Path(exe).suffix)))
 
 
-def measure(mode, binary, directory):
+def measure(mode, binary, directory, remote):
     flags = ["--bench", "--noplot", "--sample-size", "20", "--nresamples", "1000",
              "--warm-up-time", "0.15", "--measurement-time", "0.35"]
     env = os.environ.copy()
     if mode == "android-emulator":
-        remote = "/data/local/tmp/rs-alloc-criterion"
-        output("adb", "shell", "mkdir", "-p", remote)
         exe = remote + "/" + binary.name
         output("adb", "push", str(binary), exe)
         output("adb", "shell", "chmod", "700", exe)
@@ -114,7 +112,7 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     scratch = ROOT / "target"
     scratch.mkdir(exist_ok=True)
-    with tempfile.TemporaryDirectory(dir=scratch, prefix="criterion-") as tmp:
+    with tempfile.TemporaryDirectory(dir=scratch, prefix="criterion-") as tmp, device_directory(args.mode) as remote:
         work = Path(tmp)
         prepare(work, args.mode != "native")
         subprocess.run(["cargo", "generate-lockfile", "--manifest-path", str(work / "Cargo.toml")], check=True)
@@ -129,8 +127,8 @@ def main():
             measurements = {}
             for name in backends[index % len(backends):] + backends[:index % len(backends)]:
                 print(f"Round {index+1}: {name}", flush=True)
-                measurement = measure(args.mode, binaries[name], work / f"round-{index+1}-{name}")
-                expected = {"macos-jemalloc": "jemalloc", "linux-mimalloc": "mimalloc"}.get(name, name)
+                measurement = measure(args.mode, binaries[name], work / f"round-{index+1}-{name}", remote)
+                expected = expected_backend(name, args.target)
                 if name != "upstream" and measurement["allocator"] != expected:
                     raise RuntimeError(f"Requested {expected}, measured {measurement['allocator']}")
                 measurements[name] = measurement

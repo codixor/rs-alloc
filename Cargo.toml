@@ -11,6 +11,8 @@ categories = ["memory-management"]
 
 [features]
 default = ["jemalloc"]
+# Workload-tuned policy for explicitly opted-in applications.
+auto = ["dep:tcmalloc", "alternative-backends/auto"]
 jemalloc = ["dep:tikv-jemallocator"]
 macos-jemalloc = ["alternative-backends/macos-jemalloc"]
 mimalloc = ["dep:mimalloc"]

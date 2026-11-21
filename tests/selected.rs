@@ -44,7 +44,7 @@ fn growth_shrink_zeroed_and_aligned_allocations_are_correct() {
 #[cfg(all(
     feature = "jemalloc",
     not(feature = "linux-mimalloc"),
-    not(all(feature = "tcmalloc", target_env = "gnu")),
+    not(all(any(feature = "tcmalloc", feature = "auto"), target_env = "gnu")),
     target_os = "linux",
     any(target_arch = "x86_64", target_arch = "aarch64")
 ))]
@@ -56,7 +56,7 @@ fn large_block_offset() -> usize {
 #[cfg(all(
     feature = "jemalloc",
     not(feature = "linux-mimalloc"),
-    not(all(feature = "tcmalloc", target_env = "gnu")),
+    not(all(any(feature = "tcmalloc", feature = "auto"), target_env = "gnu")),
     target_os = "linux",
     any(target_arch = "x86_64", target_arch = "aarch64")
 ))]
@@ -75,6 +75,7 @@ fn jemalloc_serves_the_programs_allocations() {
 
 /// Preserve the original feature contract for callers using the desktop defaults.
 #[cfg(not(any(
+    feature = "auto",
     feature = "tcmalloc",
     feature = "linux-mimalloc",
     feature = "macos-jemalloc"
@@ -99,6 +100,27 @@ fn hosted_feature_selection() {
         "mimalloc"
     } else {
         "system"
+    };
+    assert_eq!(rs_alloc::NAME, expected);
+}
+
+#[cfg(all(
+    feature = "auto",
+    not(any(
+        feature = "tcmalloc",
+        feature = "mimalloc",
+        feature = "macos-jemalloc",
+        feature = "linux-mimalloc"
+    ))
+))]
+#[test]
+fn auto_profile_selects_the_measured_backend() {
+    let expected = match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("linux", "x86_64" | "aarch64") if cfg!(target_env = "gnu") => "tcmalloc",
+        ("macos" | "windows", "x86_64" | "aarch64") | ("android", "x86_64") => "mimalloc",
+        ("ios", "aarch64") if cfg!(target_abi = "sim") => "mimalloc",
+        ("linux", "x86_64" | "aarch64") if cfg!(feature = "jemalloc") => "jemalloc",
+        _ => "system",
     };
     assert_eq!(rs_alloc::NAME, expected);
 }

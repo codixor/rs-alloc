@@ -52,6 +52,24 @@ On aarch64, also set `JEMALLOC_SYS_WITH_LG_PAGE=16` when building: jemalloc
 compiles the page size in, and a 4 KiB build crashes on a 16 or 64 KiB page
 kernel. 64 KiB pages also run on 4 and 16 KiB kernels.
 
+## Measured automatic profile
+
+For an unlocked application, enable `auto` and call the same `rs_alloc::install!()`.
+This selects gperftools TCMalloc on GNU/Linux x86_64 and AArch64. Install
+the gperftools development package on the build host and the shared library
+on the deployment host. Windows and macOS (x86_64/AArch64), x86_64 Android
+and the ARM64 iOS simulator use mimalloc. Physical ARM Android and iOS keep
+the system allocator. Firmware still uses the board heap.
+
+```toml
+rs-alloc = { path = "../rs-alloc", default-features = false, features = ["auto"] }
+```
+
+The measured profile improved the held-out aggregate on both Linux runners
+and both mobile simulation targets. Apple Silicon macOS regressed. Keep the
+original jemalloc default for memory-locked Linux applications.
+[Results for all eight environments](bench/RESULTS.md)
+
 ## Selecting a backend
 
 Disable the defaults for a hosted system build or for an isolated comparison.
@@ -62,8 +80,9 @@ The binding links `libtcmalloc`; set a native library search path for a
 nonstandard prefix. This is the gperftools implementation.
 
 Cargo features unify across the dependency graph. On a supported target, the
-first enabled candidate wins in this order: TCMalloc, Linux mimalloc, Linux
-jemalloc, macOS jemalloc, then hosted mimalloc. The fallback is the system.
+first applicable policy wins in this order: explicit TCMalloc, Linux mimalloc,
+macOS jemalloc, hosted mimalloc, measured `auto`, then Linux jemalloc. The fallback
+is the system.
 The existing `mimalloc` flag keeps its original behavior on Linux. Use
 `linux-mimalloc` only for processes that can tolerate its virtual memory
 reservation. Keep the defaults for Linux services that use `mlockall`.
@@ -132,8 +151,8 @@ request p99 requires an application-level test.
    host, in debug and release, so tests run what ships, and no block is ever
    freed by a different allocator than the one that made it.
 2. **Only a binary installs it**, through `install!()`.
-3. **The allocator's own `GlobalAlloc`, whole**: `realloc` grows in place,
-   zeroed blocks stay `calloc`.
+3. Use each backend's own `GlobalAlloc` implementation. The gperftools Rust
+   adapter inherits the trait defaults for resizing and zeroed allocations.
 4. **Silent**: it prints nothing; log `rs_alloc::NAME` if you want.
 5. **Memory-locked Linux services use the default.** With overcommit, mimalloc commits a 1 GiB
    arena at the first allocation, and a process that calls `mlockall` locks

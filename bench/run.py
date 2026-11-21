@@ -1,8 +1,10 @@
 """Build each backend once, rotate execution order on one runner and save raw samples."""
 import argparse
+from contextlib import contextmanager
 import json
 import os
 import platform
+import re
 import shutil
 import statistics
 import subprocess
@@ -12,6 +14,34 @@ from pathlib import Path
 
 def output(*args):
     return subprocess.check_output(args, text=True).strip()
+
+
+@contextmanager
+def device_directory(mode):
+    if mode != "android-emulator":
+        yield None
+        return
+    path = output("adb", "shell", "mktemp", "-d", "/data/local/tmp/rs-alloc.XXXXXXXX")
+    if not re.fullmatch(r"/data/local/tmp/rs-alloc\.[A-Za-z0-9]{8}", path):
+        raise RuntimeError(f"Unexpected Android temporary directory: {path!r}")
+    try:
+        yield path
+    finally:
+        output("adb", "shell", "rm", "-rf", path)
+
+
+def expected_backend(feature, target):
+    if feature == "auto":
+        if target in {"x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"}:
+            return "tcmalloc"
+        if target in {"x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc",
+                      "x86_64-apple-darwin", "aarch64-apple-darwin",
+                      "aarch64-apple-ios-sim", "x86_64-linux-android"}:
+            return "mimalloc"
+        if target.startswith(("x86_64-", "aarch64-")) and "-windows-" in target:
+            return "mimalloc"
+        return "system"
+    return {"macos-jemalloc": "jemalloc", "linux-mimalloc": "mimalloc"}.get(feature, feature)
 
 
 def build(target, feature, dest):
@@ -48,7 +78,7 @@ def run():
         parser.error("--rounds must be positive")
     rows = []
     device = platform.platform()
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory() as tmp, device_directory(args.mode) as device_dir:
         commands = []
         for feature in args.features:
             binary = build(args.target, feature, Path(tmp))
@@ -57,7 +87,7 @@ def run():
                 device = output("xcrun", "simctl", "getenv", udid, "SIMULATOR_MODEL_IDENTIFIER")
                 commands.append(["xcrun", "simctl", "spawn", udid, str(binary)])
             elif args.mode == "android-emulator":
-                remote = "/data/local/tmp/rs-alloc-" + feature
+                remote = f"{device_dir}/{feature}"
                 device = output("adb", "shell", "getprop", "ro.build.fingerprint")
                 output("adb", "push", str(binary), remote)
                 output("adb", "shell", "chmod", "700", remote)
@@ -67,8 +97,7 @@ def run():
         for iteration in range(args.rounds):
             for step in range(len(commands)):
                 i = (iteration + step) % len(commands)
-                expected = {"linux-mimalloc": "mimalloc", "macos-jemalloc": "jemalloc"}.get(
-                    args.features[i], args.features[i])
+                expected = expected_backend(args.features[i], args.target)
                 for workload in ("single", "parallel", "handoff"):
                     row = json.loads(output(*commands[i], workload))
                     if row["allocator"] != expected or row["workload"] != workload:

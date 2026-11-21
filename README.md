@@ -68,8 +68,8 @@ rs-alloc = { path = "../rs-alloc", default-features = false, features = ["auto"]
 ```
 
 The desktop follow-up measured `auto` faster than upstream on Apple Silicon,
-Intel macOS, Windows ARM64 and Windows x64. The Windows x64 advantage was
-smaller than the survey's 5% comparison band. The original survey also found
+Intel macOS, Windows ARM64 and Windows x64. Windows x64 measured 1.036× upstream in the
+four-target confirmation and 1.051× on a second runner. The original survey also found
 gains on both Linux runners and both mobile simulation targets. Keep the
 jemalloc default for memory-locked Linux applications.
 [Desktop confirmation](bench/DESKTOP-RESULTS.md) · [Original eight environments](bench/RESULTS.md)

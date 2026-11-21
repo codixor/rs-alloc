@@ -74,3 +74,6 @@ unsafe impl GlobalAlloc for DesktopMiMalloc {
         unsafe { mi::mi_free(ptr.cast()) }
     }
 }
+
+#[cfg(test)]
+mod tests;

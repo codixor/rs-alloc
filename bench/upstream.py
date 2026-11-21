@@ -15,7 +15,7 @@ REV = "28aea006da844756a19c91746dd994d7d765a3de"
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def prepare(work, mobile, candidate):
+def prepare(work, mobile, candidate, features):
     upstream = work / "upstream"
     subprocess.run(["git", "init", "-q", str(upstream)], check=True)
     subprocess.run(["git", "-C", str(upstream), "fetch", "-q", "--depth=1",
@@ -29,13 +29,19 @@ def prepare(work, mobile, candidate):
     start = source.index("    let info = auto_allocator::get_allocator_info();")
     end = source.index('    let mut group = c.benchmark_group("basic_allocation");', start)
     source = (source[:start] + '#[cfg(feature = "upstream")] {\n' + source[start:end] +
-              '}\n#[cfg(feature = "ours")] println!("Benchmarking with allocator: {}", rs_alloc::NAME);\n' +
+              '}\n#[cfg(feature = "ours")] { println!("Benchmarking with allocator: {}", rs_alloc::NAME);\n' +
+              'println!("Allocator type: {}", std::any::type_name::<rs_alloc::Allocator>()); }\n' +
               source[end:])
     (work / "src").mkdir()
     (work / "src/main.rs").write_text(source, encoding="utf-8")
     # Upstream's mobile release defaults import an unavailable desktop-only
     # mimalloc dependency. Without those features its mobile policy is System.
     defaults = "false" if mobile else "true"
+    # Cargo resolves declared feature edges when generating the shared lock.
+    # Merely passing dependency/feature on the build command line can leave
+    # optional transitive dependencies out of the archived resolution.
+    feature_edges = "\n".join(f'case-{name} = ["ours", "rs-alloc/{name}"]'
+                              for name in features if name != "system")
     manifest = f'''[package]
 name = "allocator-comparison"
 version = "0.0.0"
@@ -47,6 +53,7 @@ rs-alloc = {{ path = {json.dumps(candidate.as_posix())}, optional = true, defaul
 [features]
 upstream = ["dep:auto-allocator"]
 ours = ["dep:rs-alloc"]
+{feature_edges}
 [profile.release]
 opt-level = 3
 lto = "fat"
@@ -56,10 +63,10 @@ strip = "symbols"
     (work / "Cargo.toml").write_text(manifest, encoding="utf-8")
 
 
-def build(work, target, backend):
-    feature = "upstream" if backend == "upstream" else "ours"
-    if backend not in ("upstream", "system"):
-        feature += ",rs-alloc/" + backend
+def build(work, target, backend, legacy_lock):
+    feature = {"upstream": "upstream", "system": "ours"}.get(backend, "case-" + backend)
+    if legacy_lock and backend not in ("upstream", "system"):
+        feature = "ours,rs-alloc/" + backend
     args = ["cargo", "build", "--locked", "--release", "--manifest-path", str(work / "Cargo.toml"),
             "--target", target, "--features", feature, "--message-format=json-render-diagnostics"]
     artifacts = map(json.loads, output(*args).splitlines())
@@ -98,7 +105,9 @@ def measure(mode, binary, directory, remote, archive):
             archive.write(path.with_name(file), directory.name + "/" + name + "/" + file)
     if len(cases) != 21:
         raise RuntimeError(f"Expected 21 upstream cases, found {len(cases)} in {directory}")
-    return {"allocator": selected, "median_ns": cases}
+    adapter = next((line.removeprefix("Allocator type: ") for line in result.stdout.splitlines()
+                    if line.startswith("Allocator type: ")), None)
+    return {"allocator": selected, "adapter": adapter, "median_ns": cases}
 
 
 def main():
@@ -106,21 +115,34 @@ def main():
     parser.add_argument("--target", required=True)
     parser.add_argument("--candidate-dir", type=Path, default=ROOT, help="rs-alloc checkout to benchmark")
     parser.add_argument("--lockfile", type=Path, help="replay an existing comparison.lock exactly")
+    parser.add_argument("--legacy-lock", action="store_true",
+                        help="replay a historical lock that omitted optional feature edges")
     parser.add_argument("--features", nargs="+", required=True)
     parser.add_argument("--mode", choices=["native", "android-emulator", "ios-simulator"], default="native")
+    parser.add_argument("--balanced-order", action="store_true",
+                        help="pair each rotation with its reverse to balance early and late runs")
     parser.add_argument("--rounds", type=int, default=3)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.rounds < 1:
         parser.error("--rounds must be positive")
+    if args.legacy_lock and not args.lockfile:
+        parser.error("--legacy-lock requires the original --lockfile")
+    legacy_lock = args.legacy_lock
+    if args.lockfile and args.lockfile.with_suffix(".json").is_file():
+        prior = json.loads(args.lockfile.with_suffix(".json").read_text(encoding="utf-8"))
+        if "resolved_features" not in prior or prior["resolved_features"] is None:
+            legacy_lock = True
     candidate = args.candidate_dir.resolve(strict=True)
     backends = ["upstream", *args.features]
+    if args.balanced_order and args.rounds % (2 * len(backends)):
+        parser.error("balanced order requires a whole cycle of forward and reverse rotations")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     scratch = ROOT / "target"
     scratch.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(dir=scratch, prefix="criterion-") as tmp, device_directory(args.mode) as remote:
         work = Path(tmp)
-        prepare(work, args.mode != "native", candidate)
+        prepare(work, args.mode != "native", candidate, [] if legacy_lock else args.features)
         lock = work / "Cargo.lock"
         if args.lockfile:
             shutil.copyfile(args.lockfile, lock)
@@ -131,12 +153,19 @@ def main():
         report = dict(target=args.target, mode=args.mode, cpu=cpu_model(), upstream=REV,
                       upstream_default_features=args.mode == "native", rustc=output("rustc", "-vV"),
                       commit=output("git", "-C", str(candidate), "rev-parse", "HEAD"),
+                      balanced_order=args.balanced_order, resolved_features=None if legacy_lock else args.features,
                       lock_sha256=hashlib.sha256(lock.read_bytes()).hexdigest(), rounds=[])
-        binaries = {name: build(work, args.target, name) for name in backends}
+        binaries = {name: build(work, args.target, name, legacy_lock) for name in backends}
+        if hashlib.sha256(lock.read_bytes()).hexdigest() != report["lock_sha256"]:
+            raise RuntimeError("Dependency resolution changed while building the comparison")
         with zipfile.ZipFile(args.output.with_suffix(".samples.zip"), "w", zipfile.ZIP_DEFLATED) as archive:
             for index in range(args.rounds):
                 measurements = {}
-                for name in backends[index % len(backends):] + backends[:index % len(backends)]:
+                offset = (index // 2 if args.balanced_order else index) % len(backends)
+                order = backends[offset:] + backends[:offset]
+                if args.balanced_order and index % 2:
+                    order.reverse()
+                for name in order:
                     print(f"Round {index+1}: {name}", flush=True)
                     measurement = measure(args.mode, binaries[name], work / f"round-{index+1}-{name}", remote, archive)
                     expected = expected_backend(name, args.target)

@@ -11,7 +11,7 @@ rs_alloc::install!();
 |---|---|---|
 | Linux x86_64 (AMD/Intel) and AArch64, glibc | jemalloc | system, `linux-mimalloc`, `tcmalloc` |
 | Linux x86_64 and AArch64, musl | jemalloc | system, `linux-mimalloc` |
-| Linux ARM32 | jemalloc | system |
+| Linux ARM32 | mimalloc | system, `linux-mimalloc`, `jemalloc` |
 | Linux RISC-V and other hosted architectures | system | system |
 | Windows x86_64 / ARM64 | system | `mimalloc` |
 | macOS Intel / Apple Silicon | system | `mimalloc`, `macos-jemalloc`, `tcmalloc` |
@@ -59,8 +59,9 @@ For an unlocked application, enable `auto` and call the same `rs_alloc::install!
 This selects gperftools TCMalloc on GNU/Linux x86_64 and AArch64. Install
 the gperftools development package on the build host and the shared library
 on the deployment host. TCMalloc requires 64-bit pointers for this policy.
-Linux ARM32 uses jemalloc with either the defaults or `auto`, including when
-`default-features = false`. ARM32 performance has not been benchmarked here.
+Linux ARM32 selects mimalloc both by default and with `--no-default-features --features auto`.
+Version 0.1.0 used jemalloc on ARM32. Its small-batch benchmark took 42.85 µs versus
+21.46 µs with upstream mimalloc on the same ARMv7 runner. [ARM32 measurements](https://github.com/codixor/rs-alloc/actions/runs/44899234883)
 Windows and macOS (x86_64/AArch64), x86_64 Android
 and the ARM64 iOS simulator use mimalloc. Physical ARM Android and iOS keep
 the system allocator. Windows measurements used MSVC; the same backend choice
@@ -73,8 +74,7 @@ rs-auto-alloc = { version = "0.1.0", default-features = false, features = ["auto
 The desktop follow-up measured `auto` faster than upstream on Apple Silicon,
 Intel macOS, Windows ARM64 and Windows x64. Windows x64 measured 1.036× upstream in the
 four-target confirmation and 1.051× on a second runner. The original survey also found
-gains on both Linux runners and both mobile simulation targets. Keep the
-jemalloc default for memory-locked Linux applications.
+gains on both Linux runners and both mobile simulation targets.
 [Desktop confirmation](bench/DESKTOP-RESULTS.md) · [Original eight environments](bench/RESULTS.md)
 
 ## Selecting a backend
@@ -93,12 +93,13 @@ is the system.
 The existing `mimalloc` flag applies only to Windows and macOS.
 Use `mobile-mimalloc` to replace an Android or iOS system allocator explicitly. Use
 `linux-mimalloc` only for processes that can tolerate its virtual memory
-reservation. Keep the defaults for Linux services that use `mlockall`.
+reservation. For Linux ARM32 services that need the previous jemalloc policy,
+including those that use `mlockall`, set `default-features = false, features = ["jemalloc"]`.
 
 The mobile and desktop backends ship in the same `rs-auto-alloc` crate. Features
 that share a native dependency can compile it even when another allocator is
-selected. For example, the macOS default builds jemalloc and uses `System`,
-and `auto` on a physical ARM phone builds mimalloc and uses `System`.
+selected. For example, an ARM32 Linux default build also compiles jemalloc,
+and a Windows or Android default build compiles mimalloc while selecting `System`.
 For a hosted system-only build without native allocator dependencies, set
 `default-features = false` and enable no allocator features.
 
@@ -176,7 +177,7 @@ request p99 requires an application-level test.
    uses the stock Rust adapter. The gperftools adapter inherits the Rust
    trait defaults for resizing and zeroed allocations.
 4. **Silent**: it prints nothing; log `rs_alloc::NAME` if you want.
-5. **Memory-locked Linux services use the default.** With overcommit, mimalloc commits a 1 GiB
+5. **Memory-locked Linux services use jemalloc or the system allocator.** With overcommit, mimalloc commits a 1 GiB
    arena at the first allocation, and a process that calls `mlockall` locks
    all of it (measured: 1,054,596 KiB locked at start).
 6. **Memory-locked processes get their memory back.** The kernel refuses

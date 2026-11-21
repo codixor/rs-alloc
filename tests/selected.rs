@@ -84,6 +84,12 @@ fn jemalloc_serves_the_programs_allocations() {
 #[test]
 fn hosted_feature_selection() {
     let expected = if cfg!(all(
+        target_os = "linux",
+        target_arch = "arm",
+        feature = "default"
+    )) {
+        "mimalloc"
+    } else if cfg!(all(
         feature = "jemalloc",
         target_os = "linux",
         any(
@@ -117,7 +123,7 @@ fn hosted_feature_selection() {
 #[test]
 fn auto_profile_selects_the_target_backend() {
     let expected = match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("linux", "arm") => "jemalloc",
+        ("linux", "arm") => "mimalloc",
         ("linux", "x86_64" | "aarch64")
             if cfg!(all(target_env = "gnu", target_pointer_width = "64")) =>
         {
@@ -143,8 +149,13 @@ fn mobile_replacement_is_explicit() {
 #[cfg(all(target_os = "linux", target_arch = "arm"))]
 #[test]
 fn arm32_installs_the_selected_type() {
-    #[cfg(any(feature = "jemalloc", feature = "auto"))]
-    let _: tikv_jemallocator::Jemalloc = rs_alloc::ALLOCATOR;
-    #[cfg(not(any(feature = "jemalloc", feature = "auto")))]
-    let _: std::alloc::System = rs_alloc::ALLOCATOR;
+    #[cfg(any(feature = "default", feature = "auto", feature = "linux-mimalloc"))]
+    let _: mimalloc::MiMalloc = rs_alloc::ALLOCATOR;
+    #[cfg(not(any(feature = "default", feature = "auto", feature = "linux-mimalloc")))]
+    {
+        #[cfg(feature = "jemalloc")]
+        let _: tikv_jemallocator::Jemalloc = rs_alloc::ALLOCATOR;
+        #[cfg(not(feature = "jemalloc"))]
+        let _: std::alloc::System = rs_alloc::ALLOCATOR;
+    }
 }

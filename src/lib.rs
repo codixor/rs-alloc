@@ -2,8 +2,9 @@
 //! Allocation calls use the selected backend implementation of `GlobalAlloc`. Debug and
 //! release builds use the same policy. See the README for targets and features.
 //!
-//! Linux ARM32, AArch64 and x86_64 default to jemalloc. Memory-locked services should
-//! build it with `JEMALLOC_SYS_WITH_MALLOC_CONF=narenas:4,retain:false`.
+//! Linux ARM32 defaults to mimalloc. Linux AArch64 and x86_64 default to jemalloc.
+//! On ARM32, select jemalloc with `default-features = false, features = ["jemalloc"]`.
+//! For memory-locked services, build jemalloc with `JEMALLOC_SYS_WITH_MALLOC_CONF=narenas:4,retain:false`.
 //! Use `JEMALLOC_SYS_WITH_LG_PAGE=16` for portable AArch64 jemalloc binaries.
 //! The opt-in `auto` profile follows the target policy in the README.
 //! Other hosted targets default to the system allocator. Firmware supplies
@@ -38,8 +39,11 @@ cfg_if::cfg_if! {
     ))] {
         hosted_allocator!(tcmalloc::TCMalloc, "tcmalloc");
     } else if #[cfg(all(
-        feature = "linux-mimalloc", target_os = "linux",
-        any(target_arch = "x86_64", target_arch = "aarch64")
+        target_os = "linux",
+        any(
+            all(target_arch = "arm", any(feature = "default", feature = "auto", feature = "linux-mimalloc")),
+            all(feature = "linux-mimalloc", any(target_arch = "x86_64", target_arch = "aarch64"))
+        )
     ))] {
         hosted_allocator!(mimalloc::MiMalloc, "mimalloc");
     } else if #[cfg(all(feature = "macos-jemalloc", target_os = "macos"))] {
@@ -219,11 +223,8 @@ cfg_if::cfg_if! {
         }
         hosted_allocator!(desktop::DesktopMiMalloc, "mimalloc");
     } else if #[cfg(all(
-        target_os = "linux",
-        any(
-            all(target_arch = "arm", any(feature = "auto", feature = "jemalloc")),
-            all(feature = "jemalloc", any(target_arch = "x86_64", target_arch = "aarch64"))
-        )
+        target_os = "linux", feature = "jemalloc",
+        any(target_arch = "arm", target_arch = "x86_64", target_arch = "aarch64")
     ))] {
         hosted_allocator!(tikv_jemallocator::Jemalloc, "jemalloc");
     } else {

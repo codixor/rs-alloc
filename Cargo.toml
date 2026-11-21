@@ -17,9 +17,9 @@ categories = ["memory-management"]
 name = "rs_alloc"
 
 [features]
-default = ["jemalloc"]
+default = ["jemalloc", "dep:mimalloc"]
 # Workload-tuned policy for explicitly opted-in applications.
-auto = ["dep:tcmalloc", "dep:libmimalloc-sys", "dep:mimalloc", "dep:tikv-jemallocator"]
+auto = ["dep:tcmalloc", "dep:libmimalloc-sys", "dep:mimalloc"]
 jemalloc = ["dep:tikv-jemallocator"]
 macos-jemalloc = ["dep:tikv-jemallocator"]
 mimalloc = ["dep:mimalloc"]
@@ -37,7 +37,7 @@ tikv-jemallocator = { version = "0.7.0", optional = true }
 [target.'cfg(all(any(target_os = "macos", target_os = "windows"), any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
 libmimalloc-sys = { version = "0.1.49", default-features = false, features = ["extended"], optional = true }
 
-[target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "android", target_os = "ios", all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64"))))'.dependencies]
+[target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "android", target_os = "ios", all(target_os = "linux", any(target_arch = "arm", target_arch = "x86_64", target_arch = "aarch64"))))'.dependencies]
 mimalloc = { version = "0.1.52", default-features = false, optional = true }
 
 [target.'cfg(all(any(all(target_os = "linux", target_env = "gnu"), target_os = "macos"), any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]

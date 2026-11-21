@@ -2,7 +2,7 @@
 import argparse
 from hashlib import sha256
 import json
-from math import isfinite
+from math import isclose, isfinite
 from pathlib import Path
 from statistics import geometric_mean, median
 from zipfile import ZipFile
@@ -51,6 +51,10 @@ def compare(path, candidate="auto", reference="upstream", *, expected_rounds=Non
                             or min(sample["times"]) <= 0 or not isfinite(expected) or expected <= 0
                             or estimate["median"]["point_estimate"] != expected):
                         raise ValueError(f"Invalid Criterion data: {root}")
+                    raw_median = median(time / iterations for time, iterations
+                                        in zip(sample["times"], sample["iters"]))
+                    if not isclose(raw_median, expected, rel_tol=1e-12):
+                        raise ValueError(f"Raw sample median disagrees with reported estimate: {root}")
             pairs.append({case: run[reference]["median_ns"][case] / run[candidate]["median_ns"][case]
                           for case in cases})
     typical = {case: median(pair[case] for pair in pairs) for case in cases}

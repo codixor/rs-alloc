@@ -67,10 +67,12 @@ extends to Windows GNU on those architectures. Firmware still uses the board hea
 rs-alloc = { path = "../rs-alloc", default-features = false, features = ["auto"] }
 ```
 
-The measured profile improved the held-out aggregate on both Linux runners
-and both mobile simulation targets. Apple Silicon macOS regressed. Keep the
-original jemalloc default for memory-locked Linux applications.
-[Results for all eight environments](bench/RESULTS.md)
+The desktop follow-up measured `auto` faster than upstream on Apple Silicon,
+Intel macOS, Windows ARM64 and Windows x64. The Windows x64 advantage was
+smaller than the survey's 5% comparison band. The original survey also found
+gains on both Linux runners and both mobile simulation targets. Keep the
+jemalloc default for memory-locked Linux applications.
+[Desktop confirmation](bench/DESKTOP-RESULTS.md) · [Original eight environments](bench/RESULTS.md)
 
 ## Selecting a backend
 

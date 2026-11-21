@@ -22,3 +22,7 @@ The review traced Cargo feature combinations through native dependency selection
 - The temporary comparison ran on eight hosted environments and built a downstream firmware library on six bare-metal target families. Physical handset timings, linked board firmware, the native allocator implementations themselves, and system-library security updates remain outside the verified scope. The permanent CI retains its previous platform coverage. [Completed comparison run](https://github.com/codixor/rs-alloc/actions/runs/44860123848)
 
 ECC 2.2.3 was installed for native Codex through mise-managed npx. The audit used the official marketplace revision `4adeee6732a12d1540f49a4d50a38ce8c97f9a53`. The RustSec database revision was `f291af9b1cc0d21dfcea1709d6b037963cef262b`.
+
+## Desktop tuning follow-up
+
+The desktop `auto` policy gained a separate mimalloc adapter at `08b865e`. An independent source review checked alignment, the native small-allocation size bound, zeroing, reallocation and cross-thread deallocation. The selector still forbids unsafe code. The desktop member's layout tests exercise both sides of 1 KiB and 64 KiB, pointer and page alignments, and zeroing after dirty allocations. RustSec reported no advisories in the updated 24-package lock. Cargo Deny passed its advisories, bans, licenses and sources checks with the existing unused license allowance warning. [Desktop measurements](../bench/DESKTOP-RESULTS.md)

@@ -1,0 +1,68 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install stable --profile minimal -c rustfmt,clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo clippy --all-targets --no-default-features -- -D warnings
+      - run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # jemalloc, x86_64 and arm64 (the arm64 runner checks the 64 KiB page build too)
+          - { os: ubuntu-24.04, name: linux-x86_64 }
+          - { os: ubuntu-24.04-arm, name: linux-arm64, lg_page: "16" }
+          # system allocator by default; mimalloc with the feature
+          - { os: macos-15, name: macos }
+          - { os: windows-2025, name: windows }
+    name: test (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    env:
+      JEMALLOC_SYS_WITH_MALLOC_CONF: narenas:4,retain:false
+    steps:
+      - uses: actions/checkout@v4
+      - name: 64 KiB jemalloc pages on arm64
+        if: matrix.lg_page != ''
+        shell: bash
+        run: echo "JEMALLOC_SYS_WITH_LG_PAGE=${{ matrix.lg_page }}" >> "$GITHUB_ENV"
+      - run: rustup toolchain install stable --profile minimal
+      - name: Default features
+        run: cargo test
+      - name: No features (the system allocator everywhere)
+        run: cargo test --no-default-features
+      - name: mimalloc feature
+        run: cargo test --features mimalloc
+      # The runner's memory-lock limit is too small for mlockall: raise it for
+      # this shell and require the test to lock (fail, not skip).
+      - name: Bounded under mlockall
+        if: runner.os == 'Linux'
+        run: |
+          sudo prlimit --pid $$ --memlock=unlimited:unlimited
+          RS_ALLOC_REQUIRE_MLOCK=1 cargo test --test mlock -- --nocapture
+
+  msrv:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install 1.85 --profile minimal
+      - run: cargo +1.85 test
+
+  deny:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2

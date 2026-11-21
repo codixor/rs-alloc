@@ -1,0 +1,5 @@
+# The settings jemalloc reads while compiling its C code (see src/lib.rs),
+# so local `cargo test` builds what CI builds. Programs that use rs-alloc
+# set the same in their own .cargo/config.toml.
+[env]
+JEMALLOC_SYS_WITH_MALLOC_CONF = "narenas:4,retain:false"

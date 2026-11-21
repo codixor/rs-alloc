@@ -11,7 +11,8 @@ rs_alloc::install!();
 |---|---|---|
 | Linux x86_64 (AMD/Intel) and AArch64, glibc | jemalloc | system, `linux-mimalloc`, `tcmalloc` |
 | Linux x86_64 and AArch64, musl | jemalloc | system, `linux-mimalloc` |
-| Linux ARM32 and RISC-V, other hosted architectures | system | system |
+| Linux ARM32 | jemalloc | system |
+| Linux RISC-V and other hosted architectures | system | system |
 | Windows x86_64 / ARM64 | system | `mimalloc` |
 | macOS Intel / Apple Silicon | system | `mimalloc`, `macos-jemalloc`, `tcmalloc` |
 | Android ARM32 / ARM64 / x86_64 and iOS ARM64 (including the simulator) | system | `mobile-mimalloc` |
@@ -57,7 +58,9 @@ kernel. 64 KiB pages also run on 4 and 16 KiB kernels.
 For an unlocked application, enable `auto` and call the same `rs_alloc::install!()`.
 This selects gperftools TCMalloc on GNU/Linux x86_64 and AArch64. Install
 the gperftools development package on the build host and the shared library
-on the deployment host. The Linux auto choice requires 64-bit pointers.
+on the deployment host. TCMalloc requires 64-bit pointers for this policy.
+Linux ARM32 uses jemalloc with either the defaults or `auto`, including when
+`default-features = false`. ARM32 performance has not been benchmarked here.
 Windows and macOS (x86_64/AArch64), x86_64 Android
 and the ARM64 iOS simulator use mimalloc. Physical ARM Android and iOS keep
 the system allocator. Windows measurements used MSVC; the same backend choice
@@ -91,6 +94,13 @@ The existing `mimalloc` flag applies only to Windows and macOS.
 Use `mobile-mimalloc` to replace an Android or iOS system allocator explicitly. Use
 `linux-mimalloc` only for processes that can tolerate its virtual memory
 reservation. Keep the defaults for Linux services that use `mlockall`.
+
+The mobile and desktop backends ship in the same `rs-alloc` crate. Features
+that share a native dependency can compile it even when another allocator is
+selected. For example, the macOS default builds jemalloc and uses `System`,
+and `auto` on a physical ARM phone builds mimalloc and uses `System`.
+For a hosted system-only build without native allocator dependencies, set
+`default-features = false` and enable no allocator features.
 
 ## Firmware
 
@@ -170,9 +180,8 @@ request p99 requires an application-level test.
    `madvise` on locked pages, so jemalloc's default keeps every page it ever
    used; `retain:false` makes it unmap them instead (measured: a freed
    200 MiB block stayed locked without it, and was released with it).
-7. The selector forbids unsafe code. The desktop adapter isolates its
-   native calls in [desktop/src/lib.rs](desktop/src/lib.rs). Its boundary
-   tests cover zeroing, alignment, growth and shrinking.
+7. Unsafe Rust is confined to the desktop adapter and its boundary tests,
+   which cover zeroing, alignment, growth and shrinking. [Allocator source](src/lib.rs)
 
 ## Tests
 

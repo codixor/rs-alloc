@@ -1,7 +1,5 @@
 [workspace]
-members = ["desktop"]
-default-members = ["."]
-exclude = ["backends", "mobile", "target"]
+exclude = ["target"]
 resolver = "3"
 
 [package]
@@ -18,33 +16,29 @@ categories = ["memory-management"]
 [features]
 default = ["jemalloc"]
 # Workload-tuned policy for explicitly opted-in applications.
-auto = ["dep:tcmalloc", "dep:rs-alloc-desktop", "dep:rs-alloc-mobile"]
+auto = ["dep:tcmalloc", "dep:libmimalloc-sys", "dep:mimalloc", "dep:tikv-jemallocator"]
 jemalloc = ["dep:tikv-jemallocator"]
-macos-jemalloc = ["alternative-backends/macos-jemalloc"]
+macos-jemalloc = ["dep:tikv-jemallocator"]
 mimalloc = ["dep:mimalloc"]
-mobile-mimalloc = ["rs-alloc-mobile/explicit"]
+mobile-mimalloc = ["dep:mimalloc"]
 # Separate opt-in for Linux processes that do not lock their address space.
-linux-mimalloc = ["alternative-backends/linux-mimalloc"]
+linux-mimalloc = ["dep:mimalloc"]
 tcmalloc = ["dep:tcmalloc"]
 
 [dependencies]
 cfg-if = "1"
-alternative-backends = { package = "rs-alloc-alternatives", path = "backends", version = "0.1.0", optional = true }
 
-[target.'cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
+[target.'cfg(any(target_os = "macos", all(target_os = "linux", any(target_arch = "arm", target_arch = "x86_64", target_arch = "aarch64"))))'.dependencies]
 tikv-jemallocator = { version = "0.7.0", optional = true }
 
 [target.'cfg(all(any(target_os = "macos", target_os = "windows"), any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
-rs-alloc-desktop = { path = "desktop", version = "0.1.0", optional = true }
+libmimalloc-sys = { version = "0.1.49", default-features = false, features = ["extended"], optional = true }
 
-[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
+[target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "android", target_os = "ios", all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64"))))'.dependencies]
 mimalloc = { version = "0.1.52", default-features = false, optional = true }
 
 [target.'cfg(all(any(all(target_os = "linux", target_env = "gnu"), target_os = "macos"), any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
 tcmalloc = { version = "0.3.0", optional = true }
-
-[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
-rs-alloc-mobile = { path = "mobile", version = "0.1.0", optional = true }
 
 [target.'cfg(target_os = "none")'.dependencies]
 embedded-alloc = { version = "0.7.0", default-features = false, features = ["llff"] }
@@ -53,7 +47,8 @@ embedded-alloc = { version = "0.7.0", default-features = false, features = ["llf
 rustix = { version = "1.1.6", features = ["mm", "process", "std"] }
 
 [lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "deny"
 
 [profile.release]
 opt-level = 3

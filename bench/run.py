@@ -48,6 +48,8 @@ def expected_backend(feature, target):
         desktop64 = arch in {"x86_64", "aarch64"}
         if os_name == "linux" and cfg["target_env"] == "gnu" and cfg["target_pointer_width"] == "64" and desktop64:
             return "tcmalloc"
+        if (os_name, arch) == ("linux", "arm"):
+            return "jemalloc"
         if os_name in {"windows", "macos"} and desktop64:
             return "mimalloc"
         if (os_name, arch) == ("android", "x86_64") or (os_name, arch, cfg.get("target_abi")) == ("ios", "aarch64", "sim"):

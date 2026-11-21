@@ -13,7 +13,7 @@ Each confirmed ratio is the geometric mean across 21 cases. For each case, we to
 
 ## What changed
 
-The stock mimalloc Rust adapter uses aligned native calls for ordinary Rust allocations. The desktop automatic adapter dispatches pointer-aligned or less strictly aligned requests to the ordinary and small-block APIs when their size permits. Stricter layouts use the aligned APIs. On macOS and Windows ARM64 the adapter clears the requested bytes directly for ordinary zeroed allocations up to 64 KiB. Windows x64 performed better with native zeroing. Both paths retain native zeroing for large allocations. Explicit `mimalloc` uses the stock Rust adapter. [Adapter source](../desktop/src/lib.rs) · [mimalloc Rust bindings](https://github.com/purpleprotocol/mimalloc_rust)
+The stock mimalloc Rust adapter uses aligned native calls for ordinary Rust allocations. The desktop automatic adapter dispatches pointer-aligned or less strictly aligned requests to the ordinary and small-block APIs when their size permits. Stricter layouts use the aligned APIs. On macOS and Windows ARM64 the adapter clears the requested bytes directly for ordinary zeroed allocations up to 64 KiB. Windows x64 performed better with native zeroing. Both paths retain native zeroing for large allocations. Explicit `mimalloc` uses the stock Rust adapter. [Adapter source](https://github.com/codixor/rs-alloc/blob/041e03a51298892e17c8313814487d2940dffbe0/desktop/src/lib.rs) · [mimalloc Rust bindings](https://github.com/purpleprotocol/mimalloc_rust)
 
 ## How the policy was selected and confirmed
 

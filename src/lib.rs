@@ -65,7 +65,7 @@ cfg_if::cfg_if! {
         feature = "auto", any(target_os = "macos", target_os = "windows"),
         any(target_arch = "x86_64", target_arch = "aarch64")
     ))] {
-        hosted_allocator!(mimalloc::MiMalloc, "mimalloc");
+        hosted_allocator!(rs_alloc_desktop::DesktopMiMalloc, "mimalloc");
     } else if #[cfg(all(
         feature = "jemalloc", target_os = "linux",
         any(target_arch = "x86_64", target_arch = "aarch64")

@@ -21,19 +21,19 @@ fn growth_shrink_zeroed_and_aligned_allocations_are_correct() {
         assert!(z.iter().all(|b| *b == 0));
     }
 
-    // Over-aligned types are honoured.
+    // Over-aligned types are honoured. Space is asked for with
+    // `with_capacity`, so no over-aligned value is ever built on the stack
+    // (a 64 KiB-aligned stack frame is its own hazard on Windows).
     #[repr(align(4096))]
-    struct Page([u8; 4096]);
+    struct Page(#[allow(dead_code)] [u8; 4096]);
     #[repr(align(65536))]
-    struct Big([u8; 65536]);
-    let pages: Vec<Box<Page>> = (0..64).map(|i| Box::new(Page([i as u8; 4096]))).collect();
-    for (i, p) in pages.iter().enumerate() {
-        assert_eq!(std::ptr::from_ref::<Page>(p).addr() % 4096, 0);
-        assert!(p.0.iter().all(|b| *b == i as u8));
+    struct Big(#[allow(dead_code)] [u8; 65536]);
+    for n in [1usize, 3, 64] {
+        let pages: Vec<Page> = Vec::with_capacity(n);
+        assert_eq!(pages.as_ptr().addr() % 4096, 0);
+        let big: Vec<Big> = Vec::with_capacity(n);
+        assert_eq!(big.as_ptr().addr() % 65536, 0);
     }
-    let big = Box::new(Big([7; 65536]));
-    assert_eq!(std::ptr::from_ref::<Big>(&big).addr() % 65536, 0);
-    assert!(big.0.iter().all(|b| *b == 7));
 }
 
 /// Where a large block starts tells the allocators apart without reading

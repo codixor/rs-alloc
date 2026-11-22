@@ -24,10 +24,10 @@ jobs:
       matrix:
         include:
           # jemalloc, x86_64 and arm64 (the arm64 runner checks the 64 KiB page build too)
-          - { os: ubuntu-24.04, name: linux-x86_64 }
-          - { os: ubuntu-24.04-arm, name: linux-arm64, lg_page: "16" }
+          - { os: ubuntu-24.04, name: linux-x86_64, tc_feature: tcmalloc }
+          - { os: ubuntu-24.04-arm, name: linux-arm64, lg_page: "16", tc_feature: auto }
           # system allocator by default; mimalloc with the feature
-          - { os: macos-15, name: macos }
+          - { os: macos-15, name: macos, tc_feature: tcmalloc }
           - { os: windows-2025, name: windows, warnings: deny }
     name: test (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
@@ -50,6 +50,23 @@ jobs:
       - name: Desktop automatic allocator and layout boundary tests
         if: runner.os == 'Windows' || runner.os == 'macOS'
         run: cargo test --locked --no-default-features --features auto
+      - name: Verify the installed TCMalloc is linked statically
+        if: matrix.tc_feature != ''
+        shell: bash
+        env:
+          TC_FEATURE: ${{ matrix.tc_feature }}
+        run: |
+          cargo test --locked --no-default-features --features "$TC_FEATURE" --test selected
+          cargo build --locked --no-default-features --features "$TC_FEATURE" --example allocator_bench
+          exe=target/debug/examples/allocator_bench
+          "$exe" single | grep '"allocator":"tcmalloc"'
+          if [[ "$RUNNER_OS" == macOS ]]; then
+            deps=$(otool -L "$exe")
+          else
+            deps=$(readelf -d "$exe")
+          fi
+          echo "$deps"
+          if grep -Ei 'lib(tcmalloc|profiler)' <<< "$deps"; then exit 1; fi
       # The runner's memory-lock limit is too small for mlockall: raise it for
       # this shell and require the test to lock (fail, not skip).
       - name: Bounded under mlockall

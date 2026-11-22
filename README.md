@@ -56,9 +56,8 @@ kernel. 64 KiB pages also run on 4 and 16 KiB kernels.
 ## Measured automatic profile
 
 For an unlocked application, enable `auto` and call the same `rs_alloc::install!()`.
-This selects gperftools TCMalloc on GNU/Linux x86_64 and AArch64. Install
-the gperftools development package on the build host and the shared library
-on the deployment host. TCMalloc requires 64-bit pointers for this policy.
+This selects statically linked gperftools TCMalloc on GNU/Linux x86_64 and AArch64
+with 64-bit pointers. The crate builds the allocator from the bundled source.
 Linux ARM32 selects mimalloc both by default and with `--no-default-features --features auto`.
 Version 0.1.0 used jemalloc on ARM32. Across 21 benchmarks, the mimalloc default
 scored 1.283× the released jemalloc default and 1.117× upstream mimalloc. All three
@@ -84,10 +83,13 @@ gains on both Linux runners and both mobile simulation targets.
 
 Disable the defaults for a hosted system build or for an isolated comparison.
 For example, `default-features = false, features = ["tcmalloc"]` selects
-gperftools TCMalloc on supported targets. Install the native development
-library (`libgoogle-perftools-dev` on Debian/Ubuntu or `gperftools` on macOS).
-The binding links `libtcmalloc`; set a native library search path for a
-nonstandard prefix. This is the gperftools implementation.
+gperftools TCMalloc on GNU/Linux or macOS with x86_64 or AArch64 CPUs.
+Building this backend requires a target C/C++ toolchain, a POSIX shell, Make
+and tar with xz support. Cargo builds the bundled gperftools 2.19.3 release
+and links its static archive into the application. Deployment uses the
+platform C/C++ runtime and requires no gperftools installation.
+[Upstream source archive](https://github.com/gperftools/gperftools/releases/tag/gperftools-2.19.3)
+· [gperftools license](vendor/gperftools-COPYING)
 
 Cargo features unify across the dependency graph. On a supported target, the
 first applicable policy wins in this order: explicit TCMalloc, Linux mimalloc,

@@ -19,14 +19,17 @@ name = "rs_alloc"
 [features]
 default = ["jemalloc", "dep:mimalloc"]
 # Workload-tuned policy for explicitly opted-in applications.
-auto = ["dep:tcmalloc", "dep:libmimalloc-sys", "dep:mimalloc"]
+auto = ["dep:autotools", "dep:tcmalloc", "dep:libmimalloc-sys", "dep:mimalloc"]
 jemalloc = ["dep:tikv-jemallocator"]
 macos-jemalloc = ["dep:tikv-jemallocator"]
 mimalloc = ["dep:mimalloc"]
 mobile-mimalloc = ["dep:mimalloc"]
 # Separate opt-in for Linux processes that do not lock their address space.
 linux-mimalloc = ["dep:mimalloc"]
-tcmalloc = ["dep:tcmalloc"]
+tcmalloc = ["dep:autotools", "dep:tcmalloc"]
+
+[build-dependencies]
+autotools = { version = "0.2.7", optional = true }
 
 [dependencies]
 cfg-if = "1"

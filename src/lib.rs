@@ -45,11 +45,7 @@ cfg_if::cfg_if! {
         pub use embedded_alloc::init as init_heap;
         /// Selected firmware allocator.
         pub const NAME: &str = "embedded-llff";
-    } else if #[cfg(all(
-        feature = "tcmalloc",
-        any(target_arch = "x86_64", target_arch = "aarch64"),
-        any(all(target_os = "linux", target_env = "gnu"), target_os = "macos")
-    ))] {
+    } else if #[cfg(rs_alloc_tcmalloc)] {
         hosted_allocator!(tcmalloc::TCMalloc, "tcmalloc");
     } else if #[cfg(all(
         target_os = "linux",
@@ -72,11 +68,6 @@ cfg_if::cfg_if! {
         all(feature = "auto", target_os = "ios", target_arch = "aarch64", target_abi = "sim")
     ))] {
         hosted_allocator!(mimalloc::MiMalloc, "mimalloc");
-    } else if #[cfg(all(
-        feature = "auto", target_os = "linux", target_env = "gnu", target_pointer_width = "64",
-        any(target_arch = "x86_64", target_arch = "aarch64")
-    ))] {
-        hosted_allocator!(tcmalloc::TCMalloc, "tcmalloc");
     } else if #[cfg(all(
         feature = "auto", any(target_os = "macos", target_os = "windows"),
         any(target_arch = "x86_64", target_arch = "aarch64")

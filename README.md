@@ -27,7 +27,7 @@ process and ARM firmware require different backends. AMD and Intel share Rust's
 
 ```toml
 [dependencies]
-rs-auto-alloc = "0.1.2"
+rs-auto-alloc = "0.1.3"
 ```
 
 ```rust
@@ -71,7 +71,7 @@ the system allocator. Windows measurements used MSVC; the same backend choice
 extends to Windows GNU on those architectures. Firmware still uses the board heap.
 
 ```toml
-rs-auto-alloc = { version = "0.1.2", default-features = false, features = ["auto"] }
+rs-auto-alloc = { version = "0.1.3", default-features = false, features = ["auto"] }
 ```
 
 The desktop follow-up measured `auto` faster than upstream on Apple Silicon,

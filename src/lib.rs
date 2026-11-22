@@ -12,6 +12,19 @@
 
 #![cfg_attr(target_os = "none", no_std)]
 
+// These features enable the shared mimalloc dependency for other targets. On
+// Windows the default uses System and the tuned adapter calls libmimalloc-sys.
+#[cfg(all(
+    target_os = "windows",
+    any(
+        feature = "default",
+        feature = "auto",
+        feature = "linux-mimalloc",
+        feature = "mobile-mimalloc"
+    )
+))]
+use mimalloc as _;
+
 #[cfg(not(target_os = "none"))]
 macro_rules! hosted_allocator {
     ($backend:path, $name:literal) => {

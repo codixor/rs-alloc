@@ -28,11 +28,12 @@ jobs:
           - { os: ubuntu-24.04-arm, name: linux-arm64, lg_page: "16" }
           # system allocator by default; mimalloc with the feature
           - { os: macos-15, name: macos }
-          - { os: windows-2025, name: windows }
+          - { os: windows-2025, name: windows, warnings: deny }
     name: test (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     env:
       JEMALLOC_SYS_WITH_MALLOC_CONF: narenas:4,retain:false
+      CARGO_BUILD_WARNINGS: ${{ matrix.warnings || 'warn' }}
     steps:
       - uses: actions/checkout@v4
       - name: 64 KiB jemalloc pages on arm64

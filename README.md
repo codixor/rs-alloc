@@ -27,7 +27,7 @@ process and ARM firmware require different backends. AMD and Intel share Rust's
 
 ```toml
 [dependencies]
-rs-auto-alloc = "0.1.3"
+rs-auto-alloc = "0.2.0"
 ```
 
 ```rust
@@ -69,7 +69,7 @@ the system allocator. Windows measurements used MSVC; the same backend choice
 extends to Windows GNU on those architectures. Firmware still uses the board heap.
 
 ```toml
-rs-auto-alloc = { version = "0.1.3", default-features = false, features = ["auto"] }
+rs-auto-alloc = { version = "0.2.0", default-features = false, features = ["auto"] }
 ```
 
 The desktop follow-up measured `auto` faster than upstream on Apple Silicon,
@@ -83,11 +83,13 @@ gains on both Linux runners and both mobile simulation targets.
 Disable the defaults for a hosted system build or for an isolated comparison.
 For example, `default-features = false, features = ["tcmalloc"]` selects
 gperftools TCMalloc on GNU/Linux or macOS with x86_64 or AArch64 CPUs.
-The published 0.1.3 release requires system gperftools. For static linking,
-use the Git dependency.
+Version 0.2.0 bundles gperftools and links it statically. When upgrading from
+0.1.x, change explicit type annotations from `tcmalloc::TCMalloc` to
+`rs_alloc::Allocator`. Applications using `rs_alloc::install!()` can update
+the dependency version directly.
 
 ```toml
-rs-auto-alloc = { git = "https://github.com/codixor/rs-alloc", default-features = false, features = ["tcmalloc"] }
+rs-auto-alloc = { version = "0.2.0", default-features = false, features = ["tcmalloc"] }
 ```
 
 Building this backend requires a target C/C++ toolchain, a POSIX shell, Make

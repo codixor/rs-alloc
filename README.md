@@ -56,8 +56,7 @@ kernel. 64 KiB pages also run on 4 and 16 KiB kernels.
 ## Measured automatic profile
 
 For an unlocked application, enable `auto` and call the same `rs_alloc::install!()`.
-This selects statically linked gperftools TCMalloc on GNU/Linux x86_64 and AArch64
-with 64-bit pointers. The crate builds the allocator from the bundled source.
+This selects gperftools TCMalloc on GNU/Linux x86_64 and AArch64 with 64-bit pointers.
 Linux ARM32 selects mimalloc both by default and with `--no-default-features --features auto`.
 Version 0.1.0 used jemalloc on ARM32. Across 21 benchmarks, the mimalloc default
 scored 1.283× the released jemalloc default and 1.117× upstream mimalloc. All three
@@ -84,10 +83,18 @@ gains on both Linux runners and both mobile simulation targets.
 Disable the defaults for a hosted system build or for an isolated comparison.
 For example, `default-features = false, features = ["tcmalloc"]` selects
 gperftools TCMalloc on GNU/Linux or macOS with x86_64 or AArch64 CPUs.
+The published 0.1.3 release requires system gperftools. For static linking,
+use the Git dependency.
+
+```toml
+rs-auto-alloc = { git = "https://github.com/codixor/rs-alloc", default-features = false, features = ["tcmalloc"] }
+```
+
 Building this backend requires a target C/C++ toolchain, a POSIX shell, Make
 and tar with xz support. Cargo builds the bundled gperftools 2.19.3 release
-and links its static archive into the application. Deployment uses the
-platform C/C++ runtime and requires no gperftools installation.
+and links its static archive into the application. The same build applies when
+`auto` selects TCMalloc. Deployment uses the platform C/C++ runtime and
+requires no gperftools installation.
 [Upstream source archive](https://github.com/gperftools/gperftools/releases/tag/gperftools-2.19.3)
 · [gperftools license](vendor/gperftools-COPYING)
 
@@ -190,8 +197,9 @@ request p99 requires an application-level test.
    `madvise` on locked pages, so jemalloc's default keeps every page it ever
    used; `retain:false` makes it unmap them instead (measured: a freed
    200 MiB block stayed locked without it, and was released with it).
-7. Unsafe Rust is confined to the desktop adapter and its boundary tests,
-   which cover zeroing, alignment, growth and shrinking. [Allocator source](src/lib.rs)
+7. The TCMalloc adapter calls `tc_memalign` and `tc_free`. The desktop mimalloc
+   adapter uses size- and alignment-specific entry points. Allocation tests cover
+   zeroing, alignment, growth and shrinking. [Allocator source](src/lib.rs)
 
 ## Tests
 

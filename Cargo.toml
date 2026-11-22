@@ -19,14 +19,14 @@ name = "rs_alloc"
 [features]
 default = ["jemalloc", "dep:mimalloc"]
 # Workload-tuned policy for explicitly opted-in applications.
-auto = ["dep:autotools", "dep:tcmalloc", "dep:libmimalloc-sys", "dep:mimalloc"]
+auto = ["dep:autotools", "dep:libmimalloc-sys", "dep:mimalloc"]
 jemalloc = ["dep:tikv-jemallocator"]
 macos-jemalloc = ["dep:tikv-jemallocator"]
 mimalloc = ["dep:mimalloc"]
 mobile-mimalloc = ["dep:mimalloc"]
 # Separate opt-in for Linux processes that do not lock their address space.
 linux-mimalloc = ["dep:mimalloc"]
-tcmalloc = ["dep:autotools", "dep:tcmalloc"]
+tcmalloc = ["dep:autotools"]
 
 [build-dependencies]
 autotools = { version = "0.2.7", optional = true }
@@ -42,9 +42,6 @@ libmimalloc-sys = { version = "0.1.49", default-features = false, features = ["e
 
 [target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "android", target_os = "ios", all(target_os = "linux", any(target_arch = "arm", target_arch = "x86_64", target_arch = "aarch64"))))'.dependencies]
 mimalloc = { version = "0.1.52", default-features = false, optional = true }
-
-[target.'cfg(all(any(all(target_os = "linux", target_env = "gnu"), target_os = "macos"), any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
-tcmalloc = { version = "0.3.0", optional = true }
 
 [target.'cfg(target_os = "none")'.dependencies]
 embedded-alloc = { version = "0.7.0", default-features = false, features = ["llff"] }

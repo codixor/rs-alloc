@@ -37,6 +37,8 @@ fn build_tcmalloc() {
         config.config_option("host", Some(&env::var("TARGET").unwrap()));
     }
     let dst = config
+        // Automake rejects whitespace in an absolute source path.
+        .config_option("srcdir", Some("../gperftools-2.19.3"))
         .disable_shared()
         .enable_static()
         .with("pic", None)

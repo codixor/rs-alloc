@@ -46,6 +46,33 @@ cfg_if::cfg_if! {
         /// Selected firmware allocator.
         pub const NAME: &str = "embedded-llff";
     } else if #[cfg(rs_alloc_tcmalloc)] {
+        #[allow(unsafe_code)]
+        mod tcmalloc {
+            use core::alloc::{GlobalAlloc, Layout};
+            use core::ffi::c_void;
+
+            unsafe extern "C" {
+                fn tc_memalign(alignment: usize, size: usize) -> *mut c_void;
+                fn tc_free(ptr: *mut c_void);
+            }
+
+            /// Global allocator backed by the bundled gperftools library.
+            pub struct TCMalloc;
+
+            // SAFETY: gperftools supports concurrent allocation and freeing.
+            unsafe impl GlobalAlloc for TCMalloc {
+                unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+                    // SAFETY: Layout supplies a power-of-two alignment and the
+                    // caller of GlobalAlloc::alloc supplies a nonzero size.
+                    unsafe { tc_memalign(layout.align(), layout.size()).cast() }
+                }
+
+                unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+                    // SAFETY: the caller owns a live allocation from tc_memalign.
+                    unsafe { tc_free(ptr.cast()) }
+                }
+            }
+        }
         hosted_allocator!(tcmalloc::TCMalloc, "tcmalloc");
     } else if #[cfg(all(
         target_os = "linux",

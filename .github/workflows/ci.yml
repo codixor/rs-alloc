@@ -67,6 +67,9 @@ jobs:
           fi
           echo "$deps"
           if grep -Ei 'lib(tcmalloc|profiler)' <<< "$deps"; then exit 1; fi
+          nm "$exe" > "$RUNNER_TEMP/allocator-symbols.txt"
+          grep -E ' [Tt] _?tc_memalign$' "$RUNNER_TEMP/allocator-symbols.txt"
+          grep -E ' [Tt] _?tc_free$' "$RUNNER_TEMP/allocator-symbols.txt"
       # The runner's memory-lock limit is too small for mlockall: raise it for
       # this shell and require the test to lock (fail, not skip).
       - name: Bounded under mlockall

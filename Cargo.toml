@@ -4,7 +4,7 @@ resolver = "3"
 
 [package]
 name = "rs-auto-alloc"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 rust-version = "1.85"
 description = "Compile-time global allocator selection for hosted Rust programs and bare-metal firmware"

@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: rustup toolchain install stable --profile minimal -c rustfmt,clippy
+      - run: rustup show active-toolchain
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo clippy --all-targets --no-default-features -- -D warnings
@@ -39,7 +39,7 @@ jobs:
         if: matrix.lg_page != ''
         shell: bash
         run: echo "JEMALLOC_SYS_WITH_LG_PAGE=${{ matrix.lg_page }}" >> "$GITHUB_ENV"
-      - run: rustup toolchain install stable --profile minimal
+      - run: rustup show active-toolchain
       - name: Default features
         run: cargo test
       - name: No features (the system allocator everywhere)

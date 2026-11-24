@@ -27,7 +27,7 @@ process and ARM firmware require different backends. AMD and Intel share Rust's
 
 ```toml
 [dependencies]
-rs-auto-alloc = "0.2.0"
+rs-auto-alloc = "0.2.1"
 ```
 
 ```rust
@@ -69,7 +69,7 @@ the system allocator. Windows measurements used MSVC; the same backend choice
 extends to Windows GNU on those architectures. Firmware still uses the board heap.
 
 ```toml
-rs-auto-alloc = { version = "0.2.0", default-features = false, features = ["auto"] }
+rs-auto-alloc = { version = "0.2.1", default-features = false, features = ["auto"] }
 ```
 
 The desktop follow-up measured `auto` faster than upstream on Apple Silicon,
@@ -89,7 +89,7 @@ Version 0.2.0 bundles gperftools and links it statically. When upgrading from
 the dependency version directly.
 
 ```toml
-rs-auto-alloc = { version = "0.2.0", default-features = false, features = ["tcmalloc"] }
+rs-auto-alloc = { version = "0.2.1", default-features = false, features = ["tcmalloc"] }
 ```
 
 Building this backend requires a target C/C++ toolchain, a POSIX shell, Make
@@ -223,3 +223,7 @@ Windows, plus the minimum Rust version (1.85), and runs `cargo-deny`.
 ## Licence
 
 MIT OR Apache-2.0.
+
+## Releases
+
+A push to `main` or a matching `v<version>` tag runs CI before publishing a new Cargo version to crates.io and creating its GitHub release. Already released versions are skipped.

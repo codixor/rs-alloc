@@ -226,4 +226,4 @@ MIT OR Apache-2.0.
 
 ## Releases
 
-A push to `main` or a matching `v<version>` tag runs CI before publishing a new Cargo version to crates.io and creating its GitHub release. Already released versions are skipped.
+Pushes to `main` run CI only. To publish, push a `v<version>` tag that matches the package version in `Cargo.toml`. After the tagged commit passes CI, the workflow publishes `rs-auto-alloc` to crates.io and creates the GitHub release for that tag. Already released versions are skipped.

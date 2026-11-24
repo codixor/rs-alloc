@@ -49,21 +49,35 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/release.py
-      - name: Publish the checked-out version
-        if: steps.release.outputs.publish == 'true'
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish --locked --registry crates-io
-      - name: Create the GitHub tag and release
-        if: steps.release.outputs.create_release == 'true'
+      - name: Reserve the version tag at the checked commit
+        if: steps.release.outputs.required == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.release.outputs.version }}
           TARGET: ${{ steps.release.outputs.target }}
         shell: bash
         run: |
+          ref="refs/tags/v$VERSION"
+          if ! git ls-remote --exit-code origin "$ref" >/dev/null; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="$ref" -f sha="$TARGET" --silent ||
+              git ls-remote --exit-code origin "$ref" >/dev/null
+          fi
+          git fetch --no-tags origin "$ref"
+          test "$(git rev-parse 'FETCH_HEAD^{commit}')" = "$TARGET"
+      - name: Publish the checked-out version
+        if: steps.release.outputs.publish == 'true'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --locked --registry crates-io
+      - name: Create the GitHub release
+        if: steps.release.outputs.create_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+        shell: bash
+        run: |
           flags=()
           if [[ "${VERSION%%+*}" == *-* ]]; then flags+=(--prerelease); fi
-          gh release create "v$VERSION" --target "$TARGET" --title "rs-auto-alloc $VERSION" \
+          gh release create "v$VERSION" --verify-tag --title "rs-auto-alloc $VERSION" \
             --notes "[rs-auto-alloc $VERSION on crates.io](https://crates.io/crates/rs-auto-alloc/$VERSION)" \
             --generate-notes "${flags[@]}"
